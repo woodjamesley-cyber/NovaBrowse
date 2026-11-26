@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="nova_midnight">#FF070B1E</color>
+    <color name="nova_midnight_soft">#FF0B1230</color>
+    <color name="nova_electric">#FF2F6BFF</color>
+    <color name="nova_cyan">#FF45E0FF</color>
+    <color name="nova_violet">#FF9B5CFF</color>
+    <color name="nova_lavender">#FFC9BDFF</color>
+    <color name="nova_frost">#FFF4F7FF</color>
+    <color name="icon_bg">#FF0A112E</color>
+</resources>
