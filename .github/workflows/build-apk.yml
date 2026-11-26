@@ -100,7 +100,6 @@ jobs:
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "sdk.dir=$SDK_ROOT" > local.properties
           echo "Using Android SDK at $SDK_ROOT"
-          ls "$SDK_ROOT"
           SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
           if [ ! -x "$SDKMANAGER" ]; then
             SDKMANAGER="$(command -v sdkmanager || true)"
@@ -140,7 +139,7 @@ jobs:
       - name: Run unit tests
         run: |
           set -o pipefail
-          ./gradlew testDebugUnitTest --stacktrace --no-daemon 2>&1 | tee /tmp/unit-tests.log
+          ./gradlew testDebugUnitTest --stacktrace --no-daemon --console=plain 2>&1 | tee /tmp/unit-tests.log
 
       - name: Report failed checks
         if: failure()
@@ -149,6 +148,9 @@ jobs:
           import glob
           import os
           import xml.etree.ElementTree as ET
+
+          def emit(message):
+              print("::error::" + " ".join(str(message).split())[:1400])
 
           reported = False
           for path in glob.glob("app/build/test-results/**/*.xml", recursive=True):
@@ -160,24 +162,33 @@ jobs:
                   problems = list(case.findall("failure")) + list(case.findall("error"))
                   for problem in problems:
                       lines = (problem.get("message") or problem.text or "").strip().splitlines()
-                      detail = lines[0][:300] if lines else "failed"
-                      print(f"::error::test {case.get('classname')}.{case.get('name')}: {detail}")
+                      emit(f"test {case.get('classname')}.{case.get('name')}: {lines[0] if lines else 'failed'}")
                       reported = True
+          if reported:
+              raise SystemExit(0)
 
-          if not reported:
-              log = "/tmp/unit-tests.log"
-              if os.path.exists(log):
-                  lines = open(log, errors="replace").read().splitlines()
-                  print("::error::gradle command failed; last lines: " + " | ".join(lines[-12:]))
+          log = "/tmp/unit-tests.log"
+          if not os.path.exists(log):
+              emit("Gradle did not run: the workflow failed before the test task started")
+              raise SystemExit(0)
+
+          log_lines = open(log, errors="replace").read().splitlines()
+          start = next((i for i, line in enumerate(log_lines) if line.startswith("FAILURE:")), None)
+          if start is not None:
+              emit(" | ".join(line.strip() for line in log_lines[start:start + 20]))
+          else:
+              picked = [line.strip() for line in log_lines if line.startswith("e: ") or "error: " in line or line.strip().startswith("Caused by:")][:10]
+              if picked:
+                  emit(" | ".join(picked))
               else:
-                  print("::error::build failed before the Gradle test task ran")
+                  emit(" | ".join(line.strip() for line in log_lines[-25:]))
           PY
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
+        run: ./gradlew assembleDebug --stacktrace --no-daemon --console=plain
 
       - name: Build release APK (signed when secrets are configured)
-        run: ./gradlew assembleRelease --stacktrace --no-daemon
+        run: ./gradlew assembleRelease --stacktrace --no-daemon --console=plain
         continue-on-error: true
 
       - name: Collect APKs
