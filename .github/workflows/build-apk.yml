@@ -30,16 +30,49 @@ jobs:
       # The repository is seeded from the project's source snapshot the first time this
       # workflow runs. After that the committed tree is authoritative and this step is a no-op.
       - name: Import project sources
-        run: |
-          if [ ! -d app/src/main/java/com/novabrowse/browser ]; then
-            curl -fsSL --retry 5 --retry-delay 4 -o /tmp/novabrowse-source.zip "$SOURCE_URL"
-            if [ -f source-snapshot.sha256 ]; then
-              echo "$(cat source-snapshot.sha256)  /tmp/novabrowse-source.zip" | sha256sum -c -
-            fi
-            unzip -q -o /tmp/novabrowse-source.zip -d .
-          fi
+        if: hashFiles('app/src/main/java/com/novabrowse/browser/MainActivity.kt') == ''
         env:
           SOURCE_URL: https://novabrowse-source-bootstrap-768jyb-preview.freebuff.site/novabrowse-source.zip
+        run: |
+          set -euo pipefail
+          df -h .
+          python3 - "$SOURCE_URL" <<'PY'
+          import hashlib, sys, urllib.request, zipfile
+
+          url = sys.argv[1]
+          dest = "/tmp/novabrowse-source.zip"
+          try:
+              req = urllib.request.Request(url, headers={"User-Agent": "NovaBrowse-CI/1.0"})
+              with urllib.request.urlopen(req, timeout=90) as response, open(dest, "wb") as handle:
+                  data = response.read()
+                  handle.write(data)
+              print(f"downloaded {len(data)} bytes from {url}")
+          except Exception as exc:
+              print(f"::error::Source snapshot download failed: {exc!r}")
+              sys.exit(1)
+
+          expected = open("source-snapshot.sha256").read().strip()
+          actual = hashlib.sha256(data).hexdigest()
+          print(f"sha256 {actual}")
+          if expected and expected != actual:
+              print(f"::error::Snapshot hash mismatch: expected {expected}, got {actual}")
+              sys.exit(1)
+
+          try:
+              with zipfile.ZipFile(dest) as archive:
+                  names = archive.namelist()
+                  print(f"archive entries: {len(names)}")
+                  if "app/src/main/java/com/novabrowse/browser/MainActivity.kt" not in names:
+                      print("::error::Snapshot does not contain the NovaBrowse sources")
+                      sys.exit(1)
+                  archive.extractall(".")
+          except Exception as exc:
+              print(f"::error::Snapshot extraction failed: {exc!r}")
+              sys.exit(1)
+          print("::notice::NovaBrowse sources imported from the project snapshot")
+          PY
+          test -f gradlew
+          test -f gradle/wrapper/gradle-wrapper.jar
 
       - name: Commit imported sources
         run: |
@@ -65,8 +98,6 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          cache-read-only: false
 
       - name: Prepare Gradle wrapper
         run: |
