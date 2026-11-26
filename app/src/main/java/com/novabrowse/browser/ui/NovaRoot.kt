@@ -2,10 +2,13 @@ package com.novabrowse.browser.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -56,23 +59,37 @@ fun NovaRoot(vm: NovaViewModel, onExit: () -> Unit) {
 
         AnimatedVisibility(
             visible = vm.tabSwitcherOpen,
-            enter = fadeIn(tween(180)) + slideInVertically(tween(240)) { it / 12 },
-            exit = fadeOut(tween(150)) + slideOutVertically(tween(200)) { it / 12 }
+            enter = fadeIn(tween(140)) + slideInVertically(
+                animationSpec = tween(200, easing = FastOutSlowInEasing)
+            ) { it / 18 },
+            exit = fadeOut(tween(120)) + slideOutVertically(
+                animationSpec = tween(160, easing = FastOutSlowInEasing)
+            ) { it / 24 }
         ) {
             OverlaySurface { TabSwitcher(vm) }
         }
 
         AnimatedVisibility(
             visible = vm.searchOpen,
-            enter = fadeIn(tween(160)) + slideInVertically(tween(220)) { -it / 10 },
-            exit = fadeOut(tween(140))
+            enter = fadeIn(tween(120)) + slideInVertically(
+                animationSpec = tween(180, easing = FastOutSlowInEasing)
+            ) { -it / 22 },
+            exit = fadeOut(tween(110))
         ) {
             OverlaySurface { SearchOverlay(vm) }
         }
 
         if (vm.menuOpen) BrowserMenuSheet(vm)
 
-        AnimatedVisibility(visible = vm.screen != NovaScreen.NONE, enter = fadeIn(tween(180)), exit = fadeOut(tween(150))) {
+        AnimatedVisibility(
+            visible = vm.screen != NovaScreen.NONE,
+            enter = fadeIn(tween(140)) + slideInHorizontally(
+                animationSpec = tween(220, easing = FastOutSlowInEasing)
+            ) { it / 5 },
+            exit = fadeOut(tween(120)) + slideOutHorizontally(
+                animationSpec = tween(180, easing = FastOutSlowInEasing)
+            ) { it / 8 }
+        ) {
             OverlaySurface {
                 when (vm.screen) {
                     NovaScreen.SETTINGS -> SettingsScreen(vm)
@@ -115,31 +132,7 @@ private fun OverlaySurface(content: @Composable () -> Unit) {
 
 @Composable
 private fun OverlayBackdrop() {
-    val dark = LocalNovaStyle.current.dark
-    Box(Modifier.fillMaxSize()) {
-        Box(
-            Modifier.fillMaxSize().background(
-                if (dark) Brush.verticalGradient(
-                    listOf(Color(0xFF05081A), Color(0xFF0A112E), Color(0xFF171243))
-                ) else Brush.verticalGradient(
-                    listOf(Color(0xFFF4F7FF), Color(0xFFE4ECFF), Color(0xFFEDE6FF))
-                )
-            )
-        )
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.radialGradient(
-                    listOf(
-                        (if (dark) Color(0xFF2F6BFF) else Color(0xFF9B5CFF)).copy(alpha = 0.16f),
-                        Color.Transparent
-                    )
-                )
-            )
-        )
-        Box(
-            Modifier.fillMaxSize().background(Color.Black.copy(alpha = if (dark) 0.28f else 0.04f))
-        )
-    }
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
 }
 
 @Composable
@@ -158,7 +151,7 @@ private fun ToastHost(vm: NovaViewModel) {
         exit = fadeOut(tween(150))
     ) {
         Box(Modifier.fillMaxSize().navigationBarsPadding().padding(bottom = 96.dp), contentAlignment = Alignment.BottomCenter) {
-            GlassPanel(shape = CircleShape, strong = true, elevation = 18.dp, modifier = Modifier.padding(horizontal = 24.dp)) {
+            GlassPanel(shape = RoundedCornerShape(8.dp), strong = true, elevation = 18.dp, modifier = Modifier.padding(horizontal = 24.dp)) {
                 Text(
                     message.orEmpty(),
                     style = MaterialTheme.typography.bodyLarge,

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Download
@@ -46,6 +47,7 @@ import androidx.compose.material.icons.rounded.ShortText
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -92,17 +94,24 @@ private fun update(block: (AppSettings) -> AppSettings) = Nova.settings.update(b
 fun SettingsScreen(vm: NovaViewModel) {
     val settings = vm.settings
     if (vm.settingsPage != SettingsPage.ROOT) {
-        Column(Modifier.fillMaxSize().statusBarsPadding()) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().background(MaterialTheme.colorScheme.background)) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                Modifier.fillMaxWidth().height(60.dp).padding(start = 4.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                GlassIconButton(onClick = { vm.settingsPage = SettingsPage.ROOT }, size = 40.dp) {
-                    Icon(Icons.Rounded.ArrowBack, "Back", modifier = Modifier.size(18.dp))
+                IconButton(onClick = { vm.settingsPage = SettingsPage.ROOT }, modifier = Modifier.size(48.dp)) {
+                    Icon(
+                        Icons.Rounded.ArrowBack, "Back",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
-                Spacer(Modifier.width(12.dp))
-                Text(pageTitle(vm.settingsPage), style = MaterialTheme.typography.headlineMedium,
-                    fontSize = 22.sp)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    pageTitle(vm.settingsPage),
+                    style = TextStyle(fontSize = 22.sp),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
             Box(Modifier.fillMaxSize()) {
                 when (vm.settingsPage) {
@@ -120,44 +129,120 @@ fun SettingsScreen(vm: NovaViewModel) {
         return
     }
 
-    NovaScreen(title = "Settings", onClose = { vm.closeScreen() }) {
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(horizontal = 14.dp)
+    var query by remember { mutableStateOf("") }
+    val categories = listOf(
+        SettingsEntry(Icons.Rounded.Search, "General",
+            "Search engine (${vm.currentEngine.name}), homepage, startup, language",
+            SettingsPage.GENERAL, "Basics"),
+        SettingsEntry(Icons.Rounded.Palette, "Appearance",
+            "Theme, accent colour, toolbar, wallpaper", SettingsPage.APPEARANCE, "Basics"),
+        SettingsEntry(Icons.Rounded.Security, "Privacy and security",
+            "Cookies, tracking protection, permissions, browsing data", SettingsPage.PRIVACY, "Basics"),
+        SettingsEntry(Icons.Rounded.Download, "Downloads",
+            "Download folder, notifications, history", SettingsPage.DOWNLOADS, "Basics"),
+        SettingsEntry(Icons.Rounded.Extension, "Extensions",
+            "Installed extensions and the chrome.* runtime", SettingsPage.EXTENSIONS, "Advanced"),
+        SettingsEntry(Icons.Rounded.BugReport, "Advanced",
+            "Desktop site, JavaScript, storage, developer options", SettingsPage.ADVANCED, "Advanced"),
+        SettingsEntry(Icons.Rounded.Info, "About NovaBrowse",
+            "Version ${BuildConfig.VERSION_NAME} · BROWSE BEYOND.", SettingsPage.ABOUT, "Advanced")
+    )
+    val filtered = categories.filter {
+        query.isBlank() || it.title.contains(query, ignoreCase = true) ||
+            it.subtitle.contains(query, ignoreCase = true)
+    }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding()
+    ) {
+        Row(
+            Modifier.fillMaxWidth().height(60.dp).padding(start = 4.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            SettingsCategory(Icons.Rounded.Settings, "General",
-                "Homepage, search engine, startup behaviour, language") {
-                vm.settingsPage = SettingsPage.GENERAL
+            IconButton(onClick = { vm.closeScreen() }, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    Icons.Rounded.ArrowBack, "Back",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(22.dp)
+                )
             }
-            SettingsCategory(Icons.Rounded.Palette, "Appearance",
-                "Theme, accent colour, Liquid Glass, toolbar, wallpaper") {
-                vm.settingsPage = SettingsPage.APPEARANCE
-            }
-            SettingsCategory(Icons.Rounded.Security, "Privacy",
-                "History, cookies, tracking protection, permissions, clear data") {
-                vm.settingsPage = SettingsPage.PRIVACY
-            }
-            SettingsCategory(Icons.Rounded.Download, "Downloads",
-                "Download folder, notifications, history") {
-                vm.settingsPage = SettingsPage.DOWNLOADS
-            }
-            SettingsCategory(Icons.Rounded.Extension, "Extensions",
-                "Installed extensions, permissions, installation") {
-                vm.settingsPage = SettingsPage.EXTENSIONS
-            }
-            SettingsCategory(Icons.Rounded.BugReport, "Advanced",
-                "Desktop site, JavaScript, storage, developer options") {
-                vm.settingsPage = SettingsPage.ADVANCED
-            }
-            SettingsCategory(Icons.Rounded.Info, "About NovaBrowse",
-                "Version ${BuildConfig.VERSION_NAME} · BROWSE BEYOND.") {
-                vm.settingsPage = SettingsPage.ABOUT
-            }
-            Spacer(Modifier.height(30.dp))
+            Spacer(Modifier.width(4.dp))
             Text(
-                "NovaBrowse ${BuildConfig.VERSION_NAME}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
+                "Settings",
+                style = TextStyle(fontSize = 22.sp),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .height(48.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Rounded.Search, null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(19.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+            BasicTextField(
+                value = query,
+                onValueChange = { query = it },
+                singleLine = true,
+                textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp),
+                modifier = Modifier.weight(1f),
+                decorationBox = { inner ->
+                    if (query.isEmpty()) {
+                        Text(
+                            "Search settings",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 15.sp
+                        )
+                    }
+                    inner()
+                }
+            )
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { query = "" }, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Rounded.Close, "Clear",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            if (filtered.isEmpty()) {
+                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        "No settings match \"$query\"",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            filtered.groupBy { it.section }.forEach { (section, entries) ->
+                SectionLabel(section)
+                entries.forEachIndexed { index, entry ->
+                    SettingsEntryRow(entry) { vm.settingsPage = entry.page }
+                    if (index < entries.lastIndex) {
+                        HairLine(Modifier.padding(start = 56.dp))
+                    }
+                }
+            }
+            Spacer(Modifier.height(26.dp))
+            Text(
+                "NovaBrowse ${BuildConfig.VERSION_NAME} · BROWSE BEYOND.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
             Spacer(Modifier.height(40.dp))
@@ -176,42 +261,48 @@ private fun pageTitle(page: SettingsPage): String = when (page) {
     SettingsPage.ROOT -> "Settings"
 }
 
+private data class SettingsEntry(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val title: String,
+    val subtitle: String,
+    val page: SettingsPage,
+    val section: String
+)
+
 @Composable
-private fun SettingsCategory(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    GlassPanel(
-        Modifier.fillMaxWidth().padding(vertical = 5.dp).clip(RoundedCornerShape(20.dp)).clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        elevation = 8.dp
+private fun SettingsEntryRow(entry: SettingsEntry, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(42.dp).clip(RoundedCornerShape(13.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(21.dp))
-            }
-            Spacer(Modifier.width(13.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Icon(Icons.Rounded.ChevronRight, null,
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), modifier = Modifier.size(18.dp))
+        Icon(
+            entry.icon, null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(entry.title, style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.height(2.dp))
+            Text(
+                entry.subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
 
 @Composable
 private fun SettingsCard(content: @Composable () -> Unit) {
-    GlassPanel(Modifier.fillMaxWidth().padding(vertical = 6.dp), shape = RoundedCornerShape(22.dp), elevation = 8.dp) {
+    com.novabrowse.browser.ui.components.ChromeCard(
+        Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+    ) {
         Column(Modifier.fillMaxWidth()) { content() }
     }
 }
@@ -219,10 +310,10 @@ private fun SettingsCard(content: @Composable () -> Unit) {
 @Composable
 private fun SectionLabel(text: String) {
     Text(
-        text.uppercase(),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
-        modifier = Modifier.padding(start = 18.dp, top = 16.dp, bottom = 4.dp)
+        text,
+        style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 6.dp)
     )
 }
 
@@ -365,11 +456,11 @@ private fun AppearanceSettings(vm: NovaViewModel) {
                     }
             }
         }
-        SectionLabel("Liquid Glass")
+        SectionLabel("Surfaces")
         SettingsCard {
             Column(Modifier.padding(14.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Glass intensity", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    Text("Surface transparency", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                     Text("${(settings.glassIntensity * 100).toInt()}%",
                         style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 }
@@ -382,18 +473,13 @@ private fun AppearanceSettings(vm: NovaViewModel) {
                         activeTrackColor = MaterialTheme.colorScheme.primary
                     )
                 )
-                Text("Higher values make panels more opaque. Lower values show more of the page behind them.",
+                Text("Higher values keep panels more opaque over web pages and wallpapers.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-            }
-            HairLine()
-            ToggleRow(Icons.Rounded.DarkMode, "Animated glass highlights",
-                "Subtle specular sweep on hero surfaces", settings.glassHighlights) { on ->
-                update { it.copy(glassHighlights = on) }
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             HairLine()
             ToggleRow(Icons.Rounded.Settings, "Toolbar at the bottom",
-                "Turn off to place the navigation toolbar at the top", settings.toolbarBottom) { on ->
+                "Off keeps Chrome's top toolbar and tab strip", settings.toolbarBottom) { on ->
                 update { it.copy(toolbarBottom = on) }
             }
         }
@@ -403,7 +489,7 @@ private fun AppearanceSettings(vm: NovaViewModel) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Wallpapers.presets.forEach { preset ->
                         Box(
-                            Modifier.size(40.dp).clip(RoundedCornerShape(12.dp))
+                            Modifier.size(36.dp).clip(RoundedCornerShape(9.dp))
                                 .background(Brush.linearGradient(preset.colors))
                                 .clickable { update { it.copy(wallpaper = preset.id) } }
                         )

@@ -5,6 +5,7 @@ package com.novabrowse.browser.ui
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -297,11 +298,11 @@ private fun TabCard(
     )
     GlassPanel(
         modifier = Modifier
-            .height(196.dp)
-            .clip(RoundedCornerShape(22.dp))
+            .height(190.dp)
+            .clip(RoundedCornerShape(12.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongPress),
-        shape = RoundedCornerShape(22.dp),
-        elevation = if (active) 18.dp else 8.dp,
+        shape = RoundedCornerShape(12.dp),
+        tint = if (active) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
         strong = active
     ) {
         Column(Modifier.fillMaxSize()) {
@@ -309,14 +310,7 @@ private fun TabCard(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                Color(0xFF16224C).copy(alpha = 0.9f),
-                                Color(0xFF0A0F24).copy(alpha = 0.9f)
-                            )
-                        )
-                    )
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 val preview = tab.preview
                 if (preview != null) {
@@ -333,7 +327,7 @@ private fun TabCard(
                 }
                 if (tab.isPrivate) {
                     Box(
-                        Modifier.fillMaxSize().background(Color(0xFF2A0F4A).copy(alpha = 0.45f))
+                        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.16f))
                     )
                 }
                 GlassIconButton(
@@ -383,10 +377,10 @@ private fun CompactTabRow(
     onLongPress: () -> Unit
 ) {
     GlassPanel(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongPress),
-        shape = RoundedCornerShape(16.dp),
-        elevation = 4.dp,
+        shape = RoundedCornerShape(10.dp),
+        tint = if (selected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
         strong = selected
     ) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -422,15 +416,16 @@ private fun TabActionButton(
     label: String,
     onClick: () -> Unit
 ) {
-    GlassPanel(
-        modifier = Modifier.clip(CircleShape).combinedClickable(onClick = onClick),
-        shape = CircleShape,
-        elevation = 4.dp
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp))
+            .combinedClickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, label, modifier = Modifier.size(15.dp), tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.width(5.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge)
-        }
+        Icon(icon, label, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(6.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
     }
 }

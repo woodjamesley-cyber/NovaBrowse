@@ -20,16 +20,20 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import com.novabrowse.browser.data.AppSettings
 
-// Brand palette ---------------------------------------------------------------
-val Midnight = Color(0xFF05081A)
-val DeepNavy = Color(0xFF0A112E)
-val Navy = Color(0xFF111A3F)
-val NavySoft = Color(0xFF1A2450)
-val ElectricBlue = Color(0xFF2F6BFF)
-val NovaCyan = Color(0xFF45E0FF)
-val NovaViolet = Color(0xFF9B5CFF)
-val SoftLavender = Color(0xFFC9BDFF)
-val FrostWhite = Color(0xFFF4F7FF)
+// Palette --------------------------------------------------------------------
+// Chrome's material colour system: neutral grey surfaces, one blue accent and
+// a secondary set of Google tonal colours for destructive / informational states.
+val Midnight = Color(0xFF1F2023)
+val DeepNavy = Color(0xFF282A2D)
+val Navy = Color(0xFF35373B)
+val NavySoft = Color(0xFF3F4246)
+val ElectricBlue = Color(0xFF1A73E8)
+val ChromeBlueDark = Color(0xFF8AB4F8)
+val NovaCyan = Color(0xFF7FD3F7)
+val NovaViolet = Color(0xFFC58AF9)
+val SoftLavender = Color(0xFFD7BCF7)
+val FrostWhite = Color(0xFFE8EAED)
+val ChromeGrey = Color(0xFF5F6368)
 
 fun accentColor(name: String): Color = when (name) {
     "cyan" -> NovaCyan
@@ -39,7 +43,7 @@ fun accentColor(name: String): Color = when (name) {
 }
 
 val BrandBrush = Brush.linearGradient(listOf(NovaCyan, ElectricBlue, NovaViolet))
-val AuroraBrush = Brush.linearGradient(listOf(ElectricBlue, NovaViolet, NovaCyan))
+val AuroraBrush = Brush.linearGradient(listOf(ElectricBlue, NovaCyan))
 
 data class NovaStyle(
     val dark: Boolean,
@@ -49,47 +53,48 @@ data class NovaStyle(
 )
 
 val LocalNovaStyle = staticCompositionLocalOf {
-    NovaStyle(dark = true, accent = ElectricBlue, glassIntensity = 1f, highlights = true)
+    NovaStyle(dark = true, accent = ChromeBlueDark, glassIntensity = 1f, highlights = false)
 }
 
+/** Roboto-like sizing: compact, left aligned and high contrast. */
 val NovaTypography = Typography(
     displayLarge = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold,
-        fontSize = 34.sp, letterSpacing = (-0.8).sp
+        fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Normal,
+        fontSize = 32.sp, letterSpacing = (-0.2).sp
     ),
     headlineMedium = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.SemiBold,
-        fontSize = 24.sp, letterSpacing = (-0.3).sp
+        fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Normal,
+        fontSize = 24.sp, letterSpacing = 0.sp
     ),
     titleLarge = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.SemiBold,
-        fontSize = 19.sp, letterSpacing = (-0.1).sp
+        fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium,
+        fontSize = 20.sp, letterSpacing = 0.sp
     ),
     titleMedium = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.Medium,
-        fontSize = 16.sp
+        fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Normal,
+        fontSize = 16.sp, letterSpacing = 0.1.sp
     ),
     bodyLarge = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal,
-        fontSize = 15.sp, lineHeight = 22.sp
+        fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Normal,
+        fontSize = 15.sp, lineHeight = 21.sp, letterSpacing = 0.1.sp
     ),
     bodyMedium = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal,
-        fontSize = 13.5.sp, lineHeight = 19.sp
+        fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Normal,
+        fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = 0.15.sp
     ),
     labelLarge = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.Medium,
-        fontSize = 13.sp, letterSpacing = 0.2.sp
+        fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium,
+        fontSize = 14.sp, letterSpacing = 0.2.sp
     ),
     labelSmall = TextStyle(
-        fontFamily = FontFamily.Default, fontWeight = FontWeight.Medium,
-        fontSize = 11.sp, letterSpacing = 1.6.sp
+        fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium,
+        fontSize = 11.sp, letterSpacing = 0.4.sp
     )
 )
 
 private val DarkScheme = darkColorScheme(
-    primary = ElectricBlue,
-    onPrimary = Color.White,
+    primary = ChromeBlueDark,
+    onPrimary = Color(0xFF202124),
     secondary = NovaCyan,
     tertiary = NovaViolet,
     background = Midnight,
@@ -97,41 +102,47 @@ private val DarkScheme = darkColorScheme(
     surface = DeepNavy,
     onSurface = FrostWhite,
     surfaceVariant = Navy,
-    onSurfaceVariant = SoftLavender,
-    outline = Color.White.copy(alpha = 0.18f),
-    error = Color(0xFFFF6B8B)
+    onSurfaceVariant = Color(0xFF9AA0A6),
+    outline = ChromeGrey,
+    outlineVariant = Color(0xFF3F4246),
+    error = Color(0xFFF28B82)
 )
 
 private val LightScheme = lightColorScheme(
     primary = ElectricBlue,
     onPrimary = Color.White,
-    secondary = Color(0xFF0096C7),
-    tertiary = Color(0xFF7B3FE4),
-    background = Color(0xFFF1F4FC),
-    onBackground = Color(0xFF101528),
+    secondary = Color(0xFF1A73E8),
+    tertiary = Color(0xFF8430CE),
+    background = Color(0xFFFFFFFF),
+    onBackground = Color(0xFF202124),
     surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF101528),
-    surfaceVariant = Color(0xFFE6ECFA),
-    onSurfaceVariant = Color(0xFF4B5470),
-    outline = Color(0xFF1B2440).copy(alpha = 0.12f),
-    error = Color(0xFFCC2E4E)
+    onSurface = Color(0xFF202124),
+    surfaceVariant = Color(0xFFF1F3F4),
+    onSurfaceVariant = ChromeGrey,
+    outline = Color(0xFFC4C7C5),
+    outlineVariant = Color(0xFFE3E3E3),
+    error = Color(0xFFD93025)
 )
 
 data class WallpaperPreset(val id: String, val name: String, val colors: List<Color>)
 
 object Wallpapers {
+    /** "plain" follows the theme instead of drawing a picture. */
+    val plain = WallpaperPreset("plain", "Plain", listOf(Midnight, Midnight))
+
     val presets = listOf(
-        WallpaperPreset("aurora", "Aurora", listOf(Color(0xFF05081A), Color(0xFF13245C), Color(0xFF3A2A72), Color(0xFF0A2C4A))),
-        WallpaperPreset("midnight", "Midnight", listOf(Color(0xFF03050F), Color(0xFF0A112E), Color(0xFF141D44))),
-        WallpaperPreset("nebula", "Nebula", listOf(Color(0xFF08091F), Color(0xFF3A1D63), Color(0xFF1B3E72))),
-        WallpaperPreset("glacier", "Glacier", listOf(Color(0xFF04101F), Color(0xFF0E3C5A), Color(0xFF2B7A8C))),
-        WallpaperPreset("violet", "Violet Dusk", listOf(Color(0xFF0B0620), Color(0xFF2A1155), Color(0xFF5B2A8C))),
-        WallpaperPreset("graphite", "Graphite", listOf(Color(0xFF080A12), Color(0xFF1B2030), Color(0xFF2C3348))),
-        WallpaperPreset("dawn", "Dawn", listOf(Color(0xFFF4F7FF), Color(0xFFDCE6FF), Color(0xFFEADFFF))),
-        WallpaperPreset("frost", "Frost", listOf(Color(0xFFEFF4FF), Color(0xFFD7E7FF), Color(0xFFC4F0FF)))
+        plain,
+        WallpaperPreset("graphite", "Graphite", listOf(Color(0xFF1F2023), Color(0xFF2B2D31))),
+        WallpaperPreset("midnight", "Midnight", listOf(Color(0xFF101114), Color(0xFF23262B))),
+        WallpaperPreset("aurora", "Aurora", listOf(Color(0xFF0B1B2B), Color(0xFF123A56), Color(0xFF241E46))),
+        WallpaperPreset("nebula", "Nebula", listOf(Color(0xFF14121F), Color(0xFF32204D))),
+        WallpaperPreset("glacier", "Glacier", listOf(Color(0xFF0B1A22), Color(0xFF173F4C))),
+        WallpaperPreset("violet", "Violet Dusk", listOf(Color(0xFF17111F), Color(0xFF3A2358))),
+        WallpaperPreset("dawn", "Dawn", listOf(Color(0xFFF8F9FA), Color(0xFFE8F0FE))),
+        WallpaperPreset("frost", "Frost", listOf(Color(0xFFF1F3F4), Color(0xFFE6F4F9)))
     )
 
-    fun preset(id: String): WallpaperPreset = presets.firstOrNull { it.id == id } ?: presets.first()
+    fun preset(id: String): WallpaperPreset = presets.firstOrNull { it.id == id } ?: plain
 
     fun brush(id: String): Brush {
         val preset = preset(id)
@@ -148,13 +159,16 @@ fun NovaTheme(settings: AppSettings, content: @Composable () -> Unit) {
         "dark" -> true
         else -> isSystemInDarkTheme()
     }
-    val accent = accentColor(settings.accent)
-    val scheme = (if (dark) DarkScheme else LightScheme).copy(primary = accent)
+    val scheme = if (dark) {
+        DarkScheme.copy(primary = if (settings.accent == "electric") ChromeBlueDark else accentColor(settings.accent))
+    } else {
+        LightScheme.copy(primary = accentColor(settings.accent))
+    }
     val style = NovaStyle(
         dark = dark,
-        accent = accent,
+        accent = scheme.primary,
         glassIntensity = settings.glassIntensity.coerceIn(0.4f, 1.4f),
-        highlights = settings.glassHighlights
+        highlights = false
     )
     val view = LocalView.current
     SideEffect {
@@ -169,9 +183,11 @@ fun NovaTheme(settings: AppSettings, content: @Composable () -> Unit) {
     }
 }
 
+/** Chrome's small-radius material tokens. */
 object NovaTokens {
-    val cornerSmall = 14.dp
-    val corner = 22.dp
-    val cornerLarge = 30.dp
+    val cornerSmall = 8.dp
+    val corner = 12.dp
+    val cornerLarge = 16.dp
     val gutter = 16.dp
+    val row = 56.dp
 }

@@ -11,11 +11,11 @@ data class AppSettings(
     val theme: String = "system",            // system | light | dark
     val accent: String = "electric",         // electric | cyan | violet | aurora
     val glassIntensity: Float = 1.0f,
-    val glassHighlights: Boolean = true,
-    val toolbarBottom: Boolean = true,
+    val glassHighlights: Boolean = false,
+    val toolbarBottom: Boolean = false,
     val searchEngineId: String = "google",
     val customEngines: List<SearchEngine> = emptyList(),
-    val wallpaper: String = "aurora",        // preset id or file:/// path
+    val wallpaper: String = "plain",         // "plain", preset id or file:/// path
     val wallpaperDim: Float = 0.35f,
     val showClock: Boolean = true,
     val showFavourites: Boolean = true,

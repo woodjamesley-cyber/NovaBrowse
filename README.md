@@ -1,6 +1,6 @@
 # NovaBrowse — BROWSE BEYOND.
 
-NovaBrowse is a native Android web browser with a Safari-inspired Liquid Glass interface, real
+NovaBrowse is a native Android web browser with a Chrome-style interface, real
 Chromium-powered page rendering, full tab/bookmark/download management, private browsing, and a
 Chrome-style WebExtension runtime.
 
@@ -8,11 +8,11 @@ Chrome-style WebExtension runtime.
 |---|---|
 | **App name** | NovaBrowse |
 | **Package** | `com.novabrowse.browser` |
-| **Version** | 1.0.0 |
+| **Version** | 1.1.0 |
 | **Min SDK** | 26 (Android 8.0) |
 | **Target SDK** | 34 (Android 14) |
 | **Engine** | Android System WebView (Chromium, updated by Google Play) |
-| **UI** | Jetpack Compose + Material 3, custom Liquid Glass design system |
+| **UI** | Jetpack Compose + Material 3, Chrome-style top toolbar, tab strip and neutral surfaces |
 | **Language** | Kotlin |
 | **Licence** | MIT |
 
@@ -24,7 +24,7 @@ Chrome-style WebExtension runtime.
    [latest GitHub Release](https://github.com/woodjamesley-cyber/NovaBrowse/releases/latest)
    (or from the **Actions → Build NovaBrowse → artifacts** page).
 2. Allow installation from your browser/file manager when Android asks.
-3. Open **NovaBrowse** — it starts on the Liquid Glass start page.
+3. Open **NovaBrowse** — it starts on the Chrome-style new tab page.
 4. Type in the address bar or tap a shortcut to browse.
 
 The debug APK is signed with the standard Android debug key, so it installs on any device or
@@ -37,12 +37,15 @@ installed WebView version in **Settings → About NovaBrowse**.
 
 ## Feature tour
 
-### Liquid Glass interface
-A single design system (`ui/theme`, `ui/components/Glass.kt`) drives every surface: layered
-translucency, four-stop gradients, light-catching borders, specular sheen, soft shadows, clamped
-opacity for readability and an adjustable glass intensity
-(**Settings → Appearance → Glass intensity**). Panels adapt to light/dark/system themes, accent
-colour (electric blue, cyan, violet, lavender) and eight wallpapers (including your own photo).
+### Chrome-style interface
+A single design system (`ui/theme`, `ui/components/Glass.kt`) drives every surface the way Chrome
+does: one neutral surface tone, hairline dividers, 8–16 dp corners, one blue accent and no heavy
+transparency, so pages stay readable and scrolling stays smooth. The layout follows Chrome Android:
+a top tab strip with close buttons and a **+** button, then a navigation row with home, back,
+forward, reload, the omnibox pill, the tab count and the three-dot menu. The overflow menu is a
+compact vertical list, settings use Chrome's grouped list rows, and the new tab page uses a large
+search pill with a shortcuts card. Light, dark and system themes, four accent colours, eight
+wallpapers (including your own photo) and an optional bottom toolbar are available in Settings.
 
 ### Real browsing engine
 - Android System WebView (Chromium) per tab, with JavaScript, HTML5, CSS, cookies, DOM storage,
@@ -58,7 +61,7 @@ bookmarks, shortcuts and the engine's own suggestion endpoint (optional), with v
 paste, clear and copy.
 
 ### Tabs
-One live WebView per tab (state survives switching). Safari-style glass card switcher with captured
+One live WebView per tab (state survives switching). Chrome-style card switcher with captured
 previews, grid/compact layouts, duplicate, reorder via selection actions, groups, private tabs,
 recently-closed restore, close-all, and session persistence across launches.
 
@@ -98,7 +101,7 @@ day grouping and deletion. Reading list for later.
 
 ### Private browsing
 Separate WebView profile (`androidx.webkit` multi-profile) for private tabs, no history writes,
-private session discarded when the last private tab closes, distinct violet glass styling and an
+private session discarded when the last private tab closes, distinct violet accents and an
 explicit note that private browsing does not hide traffic from sites, carriers or networks.
 
 ### Privacy & security controls
@@ -124,8 +127,8 @@ app/src/main/java/com/novabrowse/browser/
 ├── data/                        # settings, permission store, JSON persistence, models
 ├── downloads/                   # DownloadManager integration
 ├── extensions/                  # manifest parser, installer, chrome.* runtime, JS shim
-└── ui/                          # Liquid Glass design system, screens, view model
-    ├── theme/                   # colours, typography, wallpapers, glass tokens
+└── ui/                          # Chrome-style design system, screens, view model
+    ├── theme/                   # colours, typography, wallpapers, surface tokens
     ├── components/              # GlassPanel, favicons, rows, dialogs, shared chrome
     └── *Screen.kt               # home, browser, tabs, search, settings, bookmarks, …
 app/src/test/java/…              # JVM unit tests for URL parsing and tracker filtering

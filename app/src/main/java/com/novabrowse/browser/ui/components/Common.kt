@@ -1,14 +1,17 @@
 package com.novabrowse.browser.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,7 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,9 +33,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -42,23 +47,21 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.novabrowse.browser.browser.UrlTools
-import com.novabrowse.browser.ui.theme.LocalNovaStyle
-import com.novabrowse.browser.ui.theme.SoftLavender
+import com.novabrowse.browser.ui.theme.NovaTokens
 
 @Composable
 fun FaviconImage(
     url: String,
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
-    corner: Dp = 12.dp
+    corner: Dp = 8.dp
 ) {
-    val style = LocalNovaStyle.current
     val model = androidx.compose.runtime.remember(url) { UrlTools.faviconService(url) }
     Box(
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(corner))
-            .background(Color.White.copy(alpha = if (style.dark) 0.10f else 0.75f)),
+            .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center
     ) {
         if (model != null) {
@@ -66,18 +69,19 @@ fun FaviconImage(
                 model = model,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize().padding(size * 0.18f)
+                modifier = Modifier.fillMaxSize().padding(size * 0.16f)
             )
         } else {
             Text(
                 text = url.take(1).uppercase(),
                 style = MaterialTheme.typography.titleMedium,
-                color = SoftLavender
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
 
+/** Chrome settings section header: small, blue, sentence case. */
 @Composable
 fun SectionTitle(
     title: String,
@@ -86,13 +90,13 @@ fun SectionTitle(
     onAction: (() -> Unit)? = null
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        modifier = modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             title,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
+            style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f)
         )
         if (action != null && onAction != null) {
@@ -100,7 +104,10 @@ fun SectionTitle(
                 action,
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable(onClick = onAction).padding(4.dp)
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable(onClick = onAction)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             )
         }
     }
@@ -112,39 +119,38 @@ fun SettingRow(
     title: String,
     subtitle: String? = null,
     trailing: @Composable (() -> Unit)? = null,
-    tint: Color = MaterialTheme.colorScheme.primary,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     onClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .defaultMinSize(minHeight = NovaTokens.row)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(11.dp))
-                .background(tint.copy(alpha = 0.14f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(19.dp))
-        }
-        Spacer(Modifier.width(13.dp))
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.width(18.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Normal),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
             if (subtitle != null) {
+                Spacer(Modifier.height(2.dp))
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.58f),
-                    maxLines = 2,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
             }
         }
-        if (trailing != null) { Spacer(Modifier.width(8.dp)); trailing() }
+        if (trailing != null) { Spacer(Modifier.width(12.dp)); trailing() }
     }
 }
 
@@ -167,8 +173,11 @@ fun ToggleRow(
                 onCheckedChange = onCheckedChange,
                 enabled = enabled,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    uncheckedBorderColor = MaterialTheme.colorScheme.outline
                 )
             )
         },
@@ -176,6 +185,7 @@ fun ToggleRow(
     )
 }
 
+/** Chrome filter chip. */
 @Composable
 fun NovaChip(
     text: String,
@@ -183,37 +193,34 @@ fun NovaChip(
     onClick: () -> Unit,
     leading: ImageVector? = null
 ) {
-    val style = LocalNovaStyle.current
     Row(
         modifier = Modifier
-            .clip(CircleShape)
+            .clip(RoundedCornerShape(8.dp))
             .background(
-                if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-                else Color.White.copy(alpha = if (style.dark) 0.08f else 0.6f)
+                if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                else Color.Transparent
             )
-            .then(
-                if (selected) Modifier.background(
-                    androidx.compose.ui.graphics.Brush.linearGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
-                            Color.Transparent
-                        )
-                    )
-                ) else Modifier
+            .border(
+                1.dp,
+                if (selected) Color.Transparent else MaterialTheme.colorScheme.outline,
+                RoundedCornerShape(8.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (leading != null) {
-            Icon(leading, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+            Icon(
+                leading, null,
+                modifier = Modifier.size(15.dp),
+                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Spacer(Modifier.width(6.dp))
         }
         Text(
             text,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.82f)
+            style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -224,27 +231,20 @@ fun EmptyState(icon: ImageVector, title: String, subtitle: String, modifier: Mod
         modifier = modifier.fillMaxWidth().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            Modifier
-                .size(64.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
-        }
+        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(40.dp))
         Spacer(Modifier.height(14.dp))
         Text(title, style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(4.dp))
         Text(
             subtitle,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
 }
 
+/** Full-screen section with Chrome's back-arrow app bar. */
 @Composable
 fun NovaScreen(
     title: String,
@@ -252,19 +252,26 @@ fun NovaScreen(
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable BoxScope.() -> Unit
 ) {
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().height(60.dp).padding(start = 4.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            GlassIconButton(onClick = onClose, size = 40.dp) {
-                Icon(Icons.Rounded.Close, contentDescription = "Close", modifier = Modifier.size(20.dp))
+            IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    Icons.Rounded.ArrowBack, contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(22.dp)
+                )
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(4.dp))
             Text(
                 title,
-                style = MaterialTheme.typography.headlineMedium,
-                fontSize = 22.sp,
+                style = TextStyle(
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
@@ -289,26 +296,39 @@ fun NovaDialog(
             Modifier.fillMaxSize().padding(26.dp),
             contentAlignment = Alignment.Center
         ) {
-            GlassPanel(
-                modifier = modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
-                strong = true,
-                elevation = 24.dp
-            ) {
-                Column(Modifier.fillMaxWidth().padding(22.dp)) { content() }
-            }
+            Column(
+                modifier
+                    .fillMaxWidth()
+                    .shadow(12.dp, RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(24.dp)
+            ) { content() }
         }
     }
 }
 
+/**
+ * Chrome's grouped list container: neutral fill, 12 dp corners, no border or shadow.
+ * Rows inside are separated by [HairLine].
+ */
+@Composable
+fun ChromeCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        content = content
+    )
+}
+
 @Composable
 fun ListCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    GlassPanel(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        elevation = 10.dp
-    ) {
-        Column(Modifier.fillMaxWidth()) { content() }
+    ChromeCard(modifier) {
+        Box(Modifier.fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth()) { content() }
+        }
     }
 }
 
@@ -318,7 +338,7 @@ fun HairLine(modifier: Modifier = Modifier) {
         modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f))
+            .background(MaterialTheme.colorScheme.outlineVariant)
     )
 }
 
@@ -332,13 +352,13 @@ fun IconTextButton(
 ) {
     Row(
         modifier
-            .clip(CircleShape)
+            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(5.dp))
+        Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
         Text(label, style = MaterialTheme.typography.labelLarge, color = tint)
     }
 }
@@ -355,27 +375,32 @@ fun RowScope.ToolbarIcon(
         IconButton(
             onClick = onClick,
             enabled = enabled,
-            modifier = Modifier.size(46.dp)
+            modifier = Modifier.size(44.dp)
         ) {
             Icon(
                 icon,
                 contentDescription = description,
                 tint = if (enabled) MaterialTheme.colorScheme.onSurface
-                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
-                modifier = Modifier.size(23.dp)
+                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                modifier = Modifier.size(22.dp)
             )
         }
         if (badge != null && badge > 0) {
             Box(
                 Modifier
                     .align(Alignment.Center)
-                    .padding(start = 22.dp, bottom = 18.dp)
-                    .size(16.dp)
+                    .padding(start = 20.dp, bottom = 18.dp)
+                    .size(15.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primary),
                 contentAlignment = Alignment.Center
             ) {
-                Text(badge.coerceAtMost(99).toString(), fontSize = 9.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(
+                    badge.coerceAtMost(99).toString(),
+                    fontSize = 9.sp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
