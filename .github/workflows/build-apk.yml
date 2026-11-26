@@ -19,7 +19,10 @@ jobs:
   build:
     name: Assemble APK
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
+
+    env:
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
 
     steps:
       - name: Check out repository
@@ -35,7 +38,6 @@ jobs:
           SOURCE_URL: https://novabrowse-source-bootstrap-768jyb-preview.freebuff.site/novabrowse-source.zip
         run: |
           set -euo pipefail
-          df -h .
           python3 - "$SOURCE_URL" <<'PY'
           import hashlib, sys, urllib.request, zipfile
 
@@ -93,11 +95,17 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-read-only: false
 
       - name: Prepare Gradle wrapper
         run: |
@@ -122,7 +130,40 @@ jobs:
           chmod 600 keystore.properties release.keystore
 
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest --stacktrace --no-daemon
+        run: |
+          set -o pipefail
+          ./gradlew testDebugUnitTest --stacktrace --no-daemon 2>&1 | tee /tmp/unit-tests.log
+
+      - name: Report failed checks
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import glob
+          import os
+          import xml.etree.ElementTree as ET
+
+          reported = False
+          for path in glob.glob("app/build/test-results/**/*.xml", recursive=True):
+              try:
+                  root = ET.parse(path).getroot()
+              except Exception:
+                  continue
+              for case in root.iter("testcase"):
+                  problems = list(case.findall("failure")) + list(case.findall("error"))
+                  for problem in problems:
+                      message = (problem.get("message") or problem.text or "").strip().splitlines()
+                      detail = message[0][:300] if message else "failed"
+                      print(f"::error::test {case.get('classname')}.{case.get('name')}: {detail}")
+                      reported = True
+
+          if not reported:
+              log = "/tmp/unit-tests.log"
+              if os.path.exists(log):
+                  lines = open(log, errors="replace").read().splitlines()
+                  print("::error::gradle command failed; last lines: " + " | ".join(lines[-12:]))
+              elif os.path.exists("local.properties"):
+                  print("::error::build failed before producing test results")
+          PY
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace --no-daemon
