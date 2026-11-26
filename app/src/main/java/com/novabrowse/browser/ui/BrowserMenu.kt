@@ -109,7 +109,7 @@ fun BrowserMenuSheet(vm: NovaViewModel) {
             Column(
                 Modifier
                     .statusBarsPadding()
-                    .padding(top = 6.dp, end = 8.dp)
+                    .padding(top = 62.dp, end = 8.dp)
                     .width(300.dp)
                     .fillMaxHeight(0.82f)
                     .shadow(8.dp, RoundedCornerShape(12.dp))
