@@ -7,6 +7,11 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      resync:
+        description: Re-import the project source snapshot before building
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -30,12 +35,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The repository is seeded from the project's source snapshot the first time this
-      # workflow runs. After that the committed tree is authoritative and this step is a no-op.
+      # The repository is seeded from the project's source snapshot when the sources are
+      # absent, or when the workflow is dispatched with resync=true. Otherwise the
+      # committed tree is authoritative and this step is skipped.
       - name: Import project sources
-        if: hashFiles('app/src/main/java/com/novabrowse/browser/MainActivity.kt') == ''
+        if: hashFiles('app/src/main/java/com/novabrowse/browser/MainActivity.kt') == '' || inputs.resync
         env:
-          SOURCE_URL: https://novabrowse-source-bootstrap-768jyb-preview.freebuff.site/novabrowse-source.zip
+          SOURCE_URL: https://novabrowse-source-bootstrap-768jyb-preview.freebuff.site/novabrowse-source-2.zip
         run: |
           set -euo pipefail
           python3 - "$SOURCE_URL" <<'PY'
@@ -229,6 +235,9 @@ jobs:
 
             * `NovaBrowse-debug.apk` — installable debug build, signed with the Android debug key.
             * `NovaBrowse-release.apk` — release build; attached only when repository signing secrets are configured.
+
+            This build uses the Chrome-style interface (top tab strip, omnibox toolbar, overflow menu,
+            grouped settings) with shorter, smoother screen transitions.
           files: dist/*.apk
           fail_on_unmatched_files: false
           make_latest: true
