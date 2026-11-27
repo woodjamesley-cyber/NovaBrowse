@@ -11,7 +11,7 @@
   Google Password Manager, Bitwarden and other autofill apps can fill logins and save them.
 - **Large-screen home grid**: on tablets the shortcut grid uses at least 5 columns (as many as the
   3–6 column setting asks for otherwise), matching the Samsung-style home layout.
-- Version bumped to 1.4.0 (versionCode 5).
+- Version bumped to 1.4.0 (versionCode 5) and published as the `continuous` release build.
 
 ## 1.3.0 — Samsung-style home, bigger store, account
 
