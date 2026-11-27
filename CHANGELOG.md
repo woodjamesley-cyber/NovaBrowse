@@ -16,7 +16,7 @@
 - Featured store list rebuilt around extensions that actually install and run (Dark Reader,
   SponsorBlock, Video Speed Controller, JSON Formatter, Refined GitHub, Stylus), with the
   network-blocking extensions marked as unsupported rather than promised.
-- Version bumped to 1.2.0 (versionCode 3).
+- Version bumped to 1.2.0 (versionCode 3) and published as the `continuous` release build.
 
 ## 1.1.0 — Chrome-style interface
 
