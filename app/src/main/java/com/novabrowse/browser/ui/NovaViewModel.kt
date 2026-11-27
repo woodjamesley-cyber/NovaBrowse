@@ -24,6 +24,7 @@ import com.novabrowse.browser.browser.UrlTools
 import com.novabrowse.browser.data.AppSettings
 import com.novabrowse.browser.data.Bookmark
 import com.novabrowse.browser.data.ClosedTabEntry
+import com.novabrowse.browser.data.GoogleAccount
 import com.novabrowse.browser.data.HistoryEntry
 import com.novabrowse.browser.data.ReadingItem
 import com.novabrowse.browser.data.SearchEngine
@@ -32,6 +33,7 @@ import com.novabrowse.browser.data.newId
 import com.novabrowse.browser.extensions.ChromeWebStore
 import com.novabrowse.browser.extensions.ExtensionRecord
 import com.novabrowse.browser.extensions.StoreListing
+import com.novabrowse.browser.extensions.StoreSection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -47,10 +49,10 @@ import java.net.URL
 import java.net.URLEncoder
 
 enum class NovaScreen {
-    NONE, SETTINGS, BOOKMARKS, DOWNLOADS, HISTORY, EXTENSIONS, READING_LIST, ABOUT, QR, EXTENSION_STORE, LICENSES
+    NONE, SETTINGS, BOOKMARKS, DOWNLOADS, HISTORY, EXTENSIONS, READING_LIST, ABOUT, QR, EXTENSION_STORE, LICENSES, ACCOUNT
 }
 
-enum class SettingsPage { ROOT, GENERAL, APPEARANCE, PRIVACY, DOWNLOADS, EXTENSIONS, ADVANCED, ABOUT }
+enum class SettingsPage { ROOT, GENERAL, APPEARANCE, PRIVACY, DOWNLOADS, EXTENSIONS, ADVANCED, ABOUT, ACCOUNT }
 
 enum class SuggestionKind { SEARCH, HISTORY, BOOKMARK, SHORTCUT }
 
@@ -110,6 +112,12 @@ class NovaViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var storeLinkDialog by mutableStateOf(false)
         private set
+    var storeSections by mutableStateOf<List<StoreSection>>(emptyList())
+        private set
+    var storeHomeLoading by mutableStateOf(false)
+        private set
+    var googleSignedIn by mutableStateOf(false)
+        private set
     var findVisible by mutableStateOf(false)
         private set
     var findQuery by mutableStateOf("")
@@ -139,6 +147,7 @@ class NovaViewModel(app: Application) : AndroidViewModel(app) {
         }
         Nova.tabs.onTabsChanged = { tabsVersion.value++ }
         ensureTabAlive()
+        refreshGoogleSession()
     }
 
     private fun seedDefaultShortcuts() {
@@ -897,6 +906,56 @@ class NovaViewModel(app: Application) : AndroidViewModel(app) {
         }
         storeLinkDialog = false
         installFromChromeWebStore(id)
+    }
+
+    /** Categories used to fill the store with live results instead of a short fixed list. */
+    val storeCategories: List<Pair<String, String>> = listOf(
+        "Productivity" to "productivity",
+        "Privacy" to "privacy",
+        "Ad blocker" to "ad blocker",
+        "Shopping" to "shopping",
+        "Developer tools" to "developer tools",
+        "Music" to "music",
+        "Photos" to "photos",
+        "News" to "news"
+    )
+
+    fun loadStoreSections() {
+        if (storeSections.isNotEmpty() || storeHomeLoading) return
+        viewModelScope.launch {
+            storeHomeLoading = true
+            val sections = withContext(Dispatchers.IO) {
+                storeCategories.mapNotNull { (title, query) ->
+                    runCatching { ChromeWebStore.search(query, 12) }
+                        .getOrNull()
+                        ?.takeIf { it.isNotEmpty() }
+                        ?.let { StoreSection(title, query, it) }
+                }
+            }
+            storeHomeLoading = false
+            if (sections.isNotEmpty()) storeSections = sections
+        }
+    }
+
+    // ------------------------------------------------------------------ account
+
+    fun refreshGoogleSession() {
+        googleSignedIn = runCatching { GoogleAccount.isSignedIn() }.getOrDefault(false)
+    }
+
+    fun signInWithGoogle() {
+        openUrlInNewTab(GoogleAccount.SIGN_IN_URL)
+        toast("Sign in on Google's page, then open Account again")
+    }
+
+    fun signOutOfGoogle() {
+        runCatching { GoogleAccount.signOut() }
+        googleSignedIn = false
+        toast("Signed out of Google")
+    }
+
+    fun openGoogleAccount() {
+        openUrlInNewTab("https://myaccount.google.com/")
     }
 
     fun confirmExtensionInstall(record: ExtensionRecord) {

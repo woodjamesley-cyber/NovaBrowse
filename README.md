@@ -73,6 +73,10 @@ from unpacked packages, are validated, stored and executed.
   the same signed CRX that desktop Chrome installs from Google's update service, keeps the store's
   32-character extension id (so `chrome.runtime.id` and extension URLs match Chrome), and also
   accepts a pasted listing link or id. No desktop browser or side-loading is involved.
+- **Browsing the store**: the store front loads live category rows (productivity, privacy, ad
+  blockers, shopping, developer tools, music, photos, news) alongside the curated featured list,
+  with category chips and up to 40 results per search, so the catalogue is effectively the whole
+  Chrome Web Store rather than a short hand-picked list.
 
 - Content scripts run at `document_start` / `document_idle`, honouring `matches` and
   `exclude_matches`.
@@ -99,6 +103,14 @@ from unpacked packages, are validated, stored and executed.
 **Extensions → Chrome Web Store** searches the real store, lists featured extensions with a
 compatibility verdict, and installs from a listing link or a 32-character id. The extension detail
 sheet lists compatibility notes per installed package.
+
+### Account
+A dedicated **Account** screen (home avatar or Settings → Account) signs in to Google using
+Google's own sign-in page in a normal tab, so Gmail, YouTube and google.com stay signed in. The
+screen detects an active Google session from the browser's cookies and can sign out by clearing
+Google's cookies for the profile. NovaBrowse has no sync service: bookmarks, history, open tabs and
+settings are stored only on this device, and the screen states that plainly instead of implying
+Chrome-style cloud sync.
 
 ### Bookmarks, downloads, history, reading list
 Bookmark editor with folders, search, HTML import/export (Netscape format). Downloads use Android's

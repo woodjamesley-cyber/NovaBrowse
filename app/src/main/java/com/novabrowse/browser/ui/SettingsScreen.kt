@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material.icons.rounded.History
@@ -121,6 +122,7 @@ fun SettingsScreen(vm: NovaViewModel) {
                     SettingsPage.PRIVACY -> PrivacySettings(vm)
                     SettingsPage.DOWNLOADS -> DownloadSettings(vm)
                     SettingsPage.EXTENSIONS -> ExtensionSettings(vm)
+                    SettingsPage.ACCOUNT -> AccountContent(vm)
                     SettingsPage.ADVANCED -> AdvancedSettings(vm)
                     SettingsPage.ABOUT -> AboutContent(vm)
                     SettingsPage.ROOT -> Unit
@@ -132,6 +134,8 @@ fun SettingsScreen(vm: NovaViewModel) {
 
     var query by remember { mutableStateOf("") }
     val categories = listOf(
+        SettingsEntry(Icons.Rounded.AccountCircle, "Account",
+            "Google sign-in and your local browser profile", SettingsPage.ACCOUNT, "Basics"),
         SettingsEntry(Icons.Rounded.Search, "General",
             "Search engine (${vm.currentEngine.name}), homepage, startup, language",
             SettingsPage.GENERAL, "Basics"),
@@ -259,6 +263,7 @@ private fun pageTitle(page: SettingsPage): String = when (page) {
     SettingsPage.EXTENSIONS -> "Extensions"
     SettingsPage.ADVANCED -> "Advanced"
     SettingsPage.ABOUT -> "About NovaBrowse"
+    SettingsPage.ACCOUNT -> "Account"
     SettingsPage.ROOT -> "Settings"
 }
 

@@ -115,6 +115,8 @@ fun HomeScreen(vm: NovaViewModel, modifier: Modifier = Modifier) {
                         }
                         Spacer(Modifier.width(4.dp))
                     }
+                    AccountAvatar(vm)
+                    Spacer(Modifier.width(4.dp))
                     IconButton(onClick = { vm.openSettings() }, modifier = Modifier.size(40.dp)) {
                         Icon(
                             Icons.Rounded.Settings, "Settings",
@@ -326,7 +328,7 @@ private fun HomeSearchPill(vm: NovaViewModel) {
         )
         Spacer(Modifier.width(12.dp))
         Text(
-            "Search ${vm.currentEngine.name} or type URL",
+            "Search or URL",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f)

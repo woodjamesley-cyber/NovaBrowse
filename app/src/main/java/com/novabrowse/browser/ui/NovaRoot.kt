@@ -104,6 +104,7 @@ fun NovaRoot(vm: NovaViewModel, onExit: () -> Unit) {
                         onClose = { vm.closeScreen() }
                     ) { AboutContent(vm) }
                     NovaScreen.LICENSES -> LicensesScreen(vm)
+                    NovaScreen.ACCOUNT -> AccountScreen(vm)
                     NovaScreen.QR -> QrScannerScreen(vm)
                     NovaScreen.NONE -> Unit
                 }

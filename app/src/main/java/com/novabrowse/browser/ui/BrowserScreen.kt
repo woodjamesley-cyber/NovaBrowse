@@ -286,7 +286,13 @@ private fun ChromeToolbar(vm: NovaViewModel, bottom: Boolean) {
                 )
             }
 
-            AddressPill(vm, tab, Modifier.weight(1f))
+            // On the start page the new tab already shows one large search field, so the
+            // toolbar omits its omnibox instead of duplicating it.
+            if (tab?.isStartPage == true) {
+                Spacer(Modifier.weight(1f))
+            } else {
+                AddressPill(vm, tab, Modifier.weight(1f))
+            }
 
             Spacer(Modifier.width(6.dp))
             Box(

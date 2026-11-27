@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +35,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.novabrowse.browser.extensions.StoreListing
 import com.novabrowse.browser.ui.components.EmptyState
+import com.novabrowse.browser.ui.components.NovaChip
 import com.novabrowse.browser.ui.components.GlassIconButton
 import com.novabrowse.browser.ui.components.NovaDialog
 import com.novabrowse.browser.ui.components.NovaScreen
@@ -69,6 +72,8 @@ fun ExtensionStoreScreen(vm: NovaViewModel) {
     val installed by vm.extensionsFlow.collectAsStateWithLifecycle()
     val installedIds = remember(installed) { installed.map { it.id }.toSet() }
     val keyboard = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(Unit) { vm.loadStoreSections() }
 
     NovaScreen(
         title = "Chrome Web Store",
@@ -97,6 +102,13 @@ fun ExtensionStoreScreen(vm: NovaViewModel) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (vm.storeQuery.isBlank()) {
+                    item {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(vm.storeCategories) { category ->
+                                NovaChip(category.first, onClick = { vm.updateStoreQuery(category.second) })
+                            }
+                        }
+                    }
                     item { SectionTitle("Featured extensions") }
                     items(ExtensionCatalog.entries, key = { it.id }) { entry ->
                         val catalogInstalled = installedIds.contains(entry.id)
@@ -111,6 +123,47 @@ fun ExtensionStoreScreen(vm: NovaViewModel) {
                                 vm.installFromChromeWebStore(entry.id, entry.name)
                             }
                         )
+                    }
+                    if (vm.storeHomeLoading) {
+                        item {
+                            Row(
+                                Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    "Loading more of the Chrome Web Store…",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    vm.storeSections.forEach { section ->
+                        item(key = "title-${section.query}") {
+                            SectionTitle(
+                                section.title,
+                                action = "See all",
+                                onAction = { vm.updateStoreQuery(section.query) }
+                            )
+                        }
+                        item(key = "row-${section.query}") {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(section.listings, key = { it.id }) { listing ->
+                                    StoreCard(
+                                        listing = listing,
+                                        installed = installedIds.contains(listing.id),
+                                        onInstall = {
+                                            vm.installFromChromeWebStore(listing.id, listing.name)
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                     item { StoreNote(ExtensionCatalog.entries.firstOrNull { it.level != CatalogEntry.Compatibility.WORKS }?.status.orEmpty()) }
                 } else {
@@ -282,6 +335,60 @@ private fun StoreRow(
                     .background(MaterialTheme.colorScheme.primary)
                     .clickable(onClick = onInstall)
                     .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun StoreCard(
+    listing: StoreListing,
+    installed: Boolean,
+    onInstall: () -> Unit
+) {
+    Column(
+        Modifier
+            .width(156.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(12.dp)
+    ) {
+        StoreIcon(
+            iconUrl = listing.iconUrl.takeIf { it.isNotBlank() },
+            fallbackText = listing.name
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            listing.name,
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            listing.publisher.ifBlank { "chromewebstore.google.com" },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(Modifier.height(8.dp))
+        if (installed) {
+            Text(
+                "Installed",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            Text(
+                "Install",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .clickable(onClick = onInstall)
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
             )
         }
     }

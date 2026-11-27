@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.0 — Samsung-style home, bigger store, account
+
+- **One search field on the home page**: the toolbar no longer draws a second omnibox while the
+  start page is open, so the new tab shows a single large search bar (Samsung Internet style)
+  above the shortcut grid.
+- **Bigger Chrome Web Store**: the store now loads live category sections (productivity, privacy,
+  ad blockers, shopping, developer tools, music, photos, news) with horizontal rows of installable
+  extensions, category chips for one-tap browsing, and up to 40 results per search instead of 20.
+- **Account section**: new `Account` screen (home avatar, Settings → Account) with Google sign-in.
+  Signing in uses Google's own sign-in page in a tab and keeps the session in the browser; the
+  screen detects an active Google session and can sign out by clearing Google's cookies. There is
+  no cloud sync — bookmarks, history and settings stay on the device, and the screen says so.
+- Version bumped to 1.3.0 (versionCode 4).
+
 ## 1.2.0 — Chrome Web Store
 
 - New **in-app Chrome Web Store** (`Extensions → Chrome Web Store`): search Google's store from

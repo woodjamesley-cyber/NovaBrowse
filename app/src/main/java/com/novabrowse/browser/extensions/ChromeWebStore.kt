@@ -12,6 +12,13 @@ data class StoreListing(
     val slug: String = ""
 )
 
+/** A titled row of store results, used to browse the store without searching. */
+data class StoreSection(
+    val title: String,
+    val query: String,
+    val listings: List<StoreListing>
+)
+
 /**
  * Client for the Chrome Web Store.
  *
@@ -60,13 +67,13 @@ object ChromeWebStore {
             "&acceptformat=crx2,crx3&x=$x"
     }
 
-    fun search(query: String, limit: Int = 20): List<StoreListing> {
+    fun search(query: String, limit: Int = 40): List<StoreListing> {
         val encoded = URLEncoder.encode(query.trim(), "UTF-8")
         if (encoded.isBlank()) return emptyList()
         return parseSearchHtml(get("$STORE_ORIGIN/search/$encoded?hl=en"), limit)
     }
 
-    internal fun parseSearchHtml(html: String, limit: Int = 20): List<StoreListing> {
+    internal fun parseSearchHtml(html: String, limit: Int = 40): List<StoreListing> {
         val out = LinkedHashMap<String, StoreListing>()
         for (chunk in html.split("data-item-id=\"").drop(1)) {
             if (out.size >= limit) break
