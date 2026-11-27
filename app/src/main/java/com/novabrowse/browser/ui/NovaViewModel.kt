@@ -29,7 +29,9 @@ import com.novabrowse.browser.data.ReadingItem
 import com.novabrowse.browser.data.SearchEngine
 import com.novabrowse.browser.data.Shortcut
 import com.novabrowse.browser.data.newId
+import com.novabrowse.browser.extensions.ChromeWebStore
 import com.novabrowse.browser.extensions.ExtensionRecord
+import com.novabrowse.browser.extensions.StoreListing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -98,6 +100,16 @@ class NovaViewModel(app: Application) : AndroidViewModel(app) {
     var pendingExtension by mutableStateOf<ExtensionRecord?>(null)
         private set
     var extensionPopup by mutableStateOf<ExtensionRecord?>(null)
+    var storeQuery by mutableStateOf("")
+        private set
+    var storeResults by mutableStateOf<List<StoreListing>>(emptyList())
+        private set
+    var storeSearching by mutableStateOf(false)
+        private set
+    var storeMessage by mutableStateOf<String?>(null)
+        private set
+    var storeLinkDialog by mutableStateOf(false)
+        private set
     var findVisible by mutableStateOf(false)
         private set
     var findQuery by mutableStateOf("")
@@ -113,6 +125,7 @@ class NovaViewModel(app: Application) : AndroidViewModel(app) {
         private set
 
     private var searchJob: Job? = null
+    private var storeSearchJob: Job? = null
     private val suggestionJob = Job()
 
     init {
@@ -806,6 +819,84 @@ class NovaViewModel(app: Application) : AndroidViewModel(app) {
             result.onSuccess { pendingExtension = it }
                 .onFailure { toast(it.message ?: "Download failed") }
         }
+    }
+
+    // ------------------------------------------------------------------ web store
+
+    fun openExtensionStore() {
+        openScreen(NovaScreen.EXTENSION_STORE)
+    }
+
+    fun openStoreLinkDialog() { storeLinkDialog = true }
+
+    fun closeStoreLinkDialog() { storeLinkDialog = false }
+
+    fun updateStoreQuery(value: String) {
+        storeQuery = value
+        storeSearchJob?.cancel()
+        if (value.isBlank()) {
+            storeResults = emptyList()
+            storeMessage = null
+            storeSearching = false
+            return
+        }
+        storeSearchJob = viewModelScope.launch {
+            delay(350)
+            storeSearching = true
+            storeMessage = null
+            val result = withContext(Dispatchers.IO) {
+                runCatching { ChromeWebStore.search(value) }
+            }
+            storeSearching = false
+            result.onSuccess { listings ->
+                storeResults = listings
+                if (listings.isEmpty()) {
+                    storeMessage = "No extensions on the Chrome Web Store match “$value”."
+                }
+            }.onFailure { error ->
+                storeResults = emptyList()
+                storeMessage = error.message
+                    ?: "Could not reach the Chrome Web Store. Check your connection."
+            }
+        }
+    }
+
+    fun clearStoreSearch() {
+        storeSearchJob?.cancel()
+        storeQuery = ""
+        storeResults = emptyList()
+        storeMessage = null
+        storeSearching = false
+    }
+
+    fun installFromChromeWebStore(id: String, name: String? = null) {
+        if (!ChromeWebStore.isExtensionId(id)) {
+            toast("That is not a Chrome Web Store extension id")
+            return
+        }
+        if (Nova.extensionStore.find(id) != null) {
+            toast("${name ?: "That extension"} is already installed")
+            return
+        }
+        viewModelScope.launch {
+            busyMessage = if (name != null) "Installing $name" else "Installing from Chrome Web Store"
+            val result = withContext(Dispatchers.IO) {
+                Nova.extensionStore.installFromChromeWebStore(id, name)
+            }
+            busyMessage = null
+            result.onSuccess { pendingExtension = it }
+                .onFailure { toast(it.message ?: "Chrome Web Store install failed") }
+        }
+    }
+
+    fun installFromStoreLink(input: String) {
+        val id = ChromeWebStore.resolveId(input)
+        if (id == null) {
+            toast("Paste a Chrome Web Store link or a 32-character extension id")
+            return
+        }
+        storeLinkDialog = false
+        installFromChromeWebStore(id)
     }
 
     fun confirmExtensionInstall(record: ExtensionRecord) {

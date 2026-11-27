@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
@@ -31,7 +30,7 @@ import androidx.compose.material.icons.rounded.FileUpload
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,7 +47,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,8 +57,6 @@ import com.novabrowse.browser.extensions.ExtensionRecord
 import com.novabrowse.browser.ui.components.EmptyState
 import com.novabrowse.browser.ui.components.GlassIconButton
 import com.novabrowse.browser.ui.components.GlassPanel
-import com.novabrowse.browser.ui.components.HairLine
-import com.novabrowse.browser.ui.components.NovaChip
 import com.novabrowse.browser.ui.components.NovaDialog
 import com.novabrowse.browser.ui.components.NovaScreen
 import java.io.File
@@ -69,23 +65,16 @@ import java.io.File
 fun ExtensionsScreen(vm: NovaViewModel) {
     val installed by vm.extensionsFlow.collectAsStateWithLifecycle()
     var detail by remember { mutableStateOf<ExtensionRecord?>(null) }
-    var discover by remember { mutableStateOf(false) }
-    var query by remember { mutableStateOf("") }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { vm.installExtension(it) }
-    }
-
-    if (discover) {
-        ExtensionStoreScreen(vm, onBack = { discover = false })
-        return
     }
 
     NovaScreen(
         title = "Extensions",
         onClose = { vm.closeScreen() },
         actions = {
-            GlassIconButton(onClick = { discover = true }, size = 40.dp) {
-                Icon(Icons.Rounded.Search, "Discover extensions", modifier = Modifier.size(18.dp))
+            GlassIconButton(onClick = { vm.openExtensionStore() }, size = 40.dp) {
+                Icon(Icons.Rounded.Storefront, "Open Chrome Web Store", modifier = Modifier.size(19.dp))
             }
         }
     ) {
@@ -97,20 +86,32 @@ fun ExtensionsScreen(vm: NovaViewModel) {
             item {
                 GlassPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), elevation = 8.dp) {
                     Column(Modifier.padding(16.dp)) {
-                        Text("Chrome-style extensions on mobile", style = MaterialTheme.typography.titleMedium)
+                        Text("Extensions from the Chrome Web Store",
+                            style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "NovaBrowse runs unpacked extension packages with a chrome.* bridge for storage, tabs, " +
-                                "runtime messaging, bookmarks, notifications, context menus and scripting. " +
-                                "Chrome Web Store one-tap install requires desktop Chrome, so export the extension's " +
-                                "package or download a release ZIP and import it here.",
+                            "Search Google's store and install with one tap. NovaBrowse downloads the " +
+                                "same signed CRX that desktop Chrome installs and runs it in its own " +
+                                "chrome.* runtime: content scripts, background pages, storage, tabs, " +
+                                "scripting, messaging, bookmarks, notifications and context menus. " +
+                                "Unpacked .zip and .crx packages can still be imported.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f)
                         )
                         Spacer(Modifier.height(10.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ActionPill(Icons.Rounded.FileUpload, "Import .zip / .crx") { picker.launch("*/*") }
-                            ActionPill(Icons.Rounded.Link, "Install from URL") { vm.openInstallUrlDialog() }
+                            ActionPill(Icons.Rounded.Storefront, "Chrome Web Store") {
+                                vm.openExtensionStore()
+                            }
+                            ActionPill(Icons.Rounded.FileUpload, "Import .zip / .crx") {
+                                picker.launch("*/*")
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ActionPill(Icons.Rounded.Link, "Install from URL") {
+                                vm.openInstallUrlDialog()
+                            }
                         }
                     }
                 }
@@ -118,7 +119,7 @@ fun ExtensionsScreen(vm: NovaViewModel) {
             if (installed.isEmpty()) {
                 item {
                     EmptyState(Icons.Rounded.Extension, "No extensions installed",
-                        "Import an unpacked extension to add browser features",
+                        "Open the Chrome Web Store to add browser features",
                         Modifier.fillMaxWidth().padding(vertical = 30.dp))
                 }
             } else {
@@ -229,95 +230,7 @@ fun ExtensionsScreen(vm: NovaViewModel) {
 }
 
 @Composable
-private fun ExtensionStoreScreen(vm: NovaViewModel, onBack: () -> Unit) {
-    var query by remember { mutableStateOf("") }
-    val entries = remember(query) {
-        ExtensionCatalog.entries.filter {
-            query.isBlank() || it.name.contains(query, true) || it.category.contains(query, true)
-        }
-    }
-    Column(Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            GlassIconButton(onClick = onBack, size = 40.dp) {
-                Icon(Icons.Rounded.Close, "Back to extensions", modifier = Modifier.size(18.dp))
-            }
-            Spacer(Modifier.width(10.dp))
-            Text("Discover", style = MaterialTheme.typography.headlineMedium, fontSize = 22.sp)
-        }
-        Spacer(Modifier.height(10.dp))
-        GlassPanel(Modifier.fillMaxWidth().height(44.dp), shape = RoundedCornerShape(22.dp), elevation = 6.dp) {
-            Row(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Search, null, modifier = Modifier.size(15.dp),
-                    tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                BasicTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    singleLine = true,
-                    textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp),
-                    modifier = Modifier.weight(1f),
-                    decorationBox = { inner ->
-                        if (query.isEmpty()) {
-                            Text("Search popular extensions", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.42f))
-                        }
-                        inner()
-                    }
-                )
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        LazyColumn(Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(entries, key = { it.name }) { entry ->
-                GlassPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), elevation = 6.dp) {
-                    Column(Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(entry.name, style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.weight(1f))
-                            CompatibilityBadge(entry.level)
-                        }
-                        Text(entry.category, style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f))
-                        Spacer(Modifier.height(6.dp))
-                        Text(entry.summary, style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
-                        Spacer(Modifier.height(6.dp))
-                        Text(entry.status, style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
-                        Spacer(Modifier.height(10.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ActionPill(Icons.Rounded.Search, "Find package") {
-                                vm.navigate(
-                                    "https://chromewebstore.google.com/search/" +
-                                        java.net.URLEncoder.encode(entry.storeSearch, "UTF-8")
-                                )
-                                vm.closeScreen()
-                            }
-                            ActionPill(Icons.Rounded.Extension, "Extensions") {
-                                vm.openScreen(NovaScreen.EXTENSIONS)
-                            }
-                        }
-                    }
-                }
-            }
-            item {
-                GlassPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), elevation = 4.dp) {
-                    Text(
-                        "Extensions marked “Not supported” depend on desktop-only Chromium APIs. " +
-                            "NovaBrowse lists the reason instead of pretending they work.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-                        modifier = Modifier.padding(14.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CompatibilityBadge(level: CatalogEntry.Compatibility) {
+fun CompatibilityBadge(level: CatalogEntry.Compatibility) {
     val (label, color) = when (level) {
         CatalogEntry.Compatibility.WORKS -> "Likely works" to Color(0xFF4ADE80)
         CatalogEntry.Compatibility.LIMITED -> "Limited" to Color(0xFFFFB74D)

@@ -7,15 +7,17 @@ package com.novabrowse.browser.extensions
  */
 object ExtensionShim {
 
-    fun bootstrap(extId: String, extensionName: String): String = """
+    fun bootstrap(extId: String, extensionName: String, manifestJson: String = "{}"): String = """
     (function () {
-      if (window.__novaExtBooted) return;
-      window.__novaExtBooted = true;
       var EXT_ID = ${js(extId)};
+      window.__novaExtShims = window.__novaExtShims || {};
+      if (window.__novaExtShims[EXT_ID]) return;
       var EXT_NAME = ${js(extensionName)};
+      var MANIFEST = {};
+      try { MANIFEST = JSON.parse(${js(manifestJson)}); } catch (e) { MANIFEST = {}; }
       var pending = new Map();
       var seq = 0;
-      var listeners = { message: [], connect: [], actionClicked: [] };
+      var listeners = { message: [], connect: [], actionClicked: [], installed: [], startup: [] };
 
       function call(ns, method, args) {
         return new Promise(function (resolve, reject) {
@@ -65,6 +67,7 @@ object ExtensionShim {
           return false;
         }
         if (kind === 'actionClicked') fire('actionClicked', payload);
+        if (kind === 'installed' || kind === 'startup') fire(kind, payload || {});
         return false;
       };
 
@@ -97,7 +100,7 @@ object ExtensionShim {
       var chromeObj = {
         runtime: {
           id: EXT_ID,
-          getManifest: function () { return call('runtime', 'getManifest', []); },
+          getManifest: function () { return MANIFEST; },
           getURL: function (path) { return 'https://extensions.novabrowse.local/' + EXT_ID + '/' + String(path || '').replace(/^\//, ''); },
           sendMessage: function () {
             var args = Array.prototype.slice.call(arguments);
@@ -115,8 +118,8 @@ object ExtensionShim {
             },
             hasListener: function (fn) { return listeners.message.indexOf(fn) >= 0; }
           },
-          onInstalled: { addListener: function () {} },
-          onStartup: { addListener: function () {} },
+          onInstalled: { addListener: function (fn) { listeners.installed.push(fn); } },
+          onStartup: { addListener: function (fn) { listeners.startup.push(fn); } },
           lastError: null
         },
         storage: {
@@ -205,8 +208,11 @@ object ExtensionShim {
         }
       };
       chromeObj.browserAction = chromeObj.action;
-      window.chrome = window.chrome && window.chrome.runtime ? window.chrome : chromeObj;
-      window.browser = window.chrome;
+      window.__novaExtShims[EXT_ID] = chromeObj;
+      if (!window.chrome || !window.chrome.runtime) {
+        window.chrome = chromeObj;
+        window.browser = chromeObj;
+      }
       window.NOVA_EXTENSION = { id: EXT_ID, name: EXT_NAME };
     })();
     """.trimIndent()
@@ -215,11 +221,21 @@ object ExtensionShim {
      * Wraps a content script so it only executes on pages matching the manifest's
      * match patterns (WebView's document-start API can only filter by origin).
      */
-    fun contentScript(script: String, matches: List<String>, exclude: List<String>): String {
+    fun contentScript(
+        script: String,
+        matches: List<String>,
+        exclude: List<String>,
+        extId: String = ""
+    ): String {
         val matchesJson = matches.joinToString(",") { js(it) }
         val excludeJson = exclude.joinToString(",") { js(it) }
+        // Pages can host several extensions, so each script rebinds chrome.* to its own shim.
+        val bind = if (extId.isBlank()) "" else
+            "if (window.__novaExtShims)" +
+                "{var own=window.__novaExtShims[${js(extId)}];if(own)window.chrome=own;}"
         return """
         (function () {
+          $bind
           function patternToRegex(p) {
             if (p === '<all_urls>') return /^https?:\\/\\/.*/;
             var out = '^';

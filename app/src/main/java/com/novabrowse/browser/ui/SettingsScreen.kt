@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Language
@@ -682,6 +683,11 @@ private fun ExtensionSettings(vm: NovaViewModel) {
             SettingRow(Icons.Rounded.Extension, "Manage extensions",
                 "${installed.size} installed · ${installed.count { it.enabled }} enabled") {
                 vm.openScreen(NovaScreen.EXTENSIONS)
+            }
+            HairLine()
+            SettingRow(Icons.Rounded.Storefront, "Chrome Web Store",
+                "Search the store and install extensions without leaving NovaBrowse") {
+                vm.openExtensionStore()
             }
             HairLine()
             ToggleRow(Icons.Rounded.BugReport, "Developer options",

@@ -66,7 +66,13 @@ previews, grid/compact layouts, duplicate, reorder via selection actions, groups
 recently-closed restore, close-all, and session persistence across launches.
 
 ### Extensions (chrome.* bridge)
-A real extension runtime, not a mock: unpacked packages are validated, stored and executed.
+A real extension runtime, not a mock: extensions install from the built-in Chrome Web Store or
+from unpacked packages, are validated, stored and executed.
+
+- **In-app Chrome Web Store**: search Google's store and install with one tap. NovaBrowse fetches
+  the same signed CRX that desktop Chrome installs from Google's update service, keeps the store's
+  32-character extension id (so `chrome.runtime.id` and extension URLs match Chrome), and also
+  accepts a pasted listing link or id. No desktop browser or side-loading is involved.
 
 - Content scripts run at `document_start` / `document_idle`, honouring `matches` and
   `exclude_matches`.
@@ -84,14 +90,15 @@ A real extension runtime, not a mock: unpacked packages are validated, stored an
 | API / feature | Why |
 |---|---|
 | Blocking `webRequest` / `declarativeNetRequest` network rules | Android System WebView exposes no request-blocking extension API. NovaBrowse ships its own on-device tracker filter instead. |
-| One-tap install from the Chrome Web Store | The Web Store install flow requires desktop Chrome and Google's CRX signing service. Import a ZIP/unpacked package or install from a direct URL. |
+| Extension pages on `chrome-extension://` URLs | Extension resources are served from a private https origin, so hard-coded `chrome-extension://` links inside an extension do not resolve. |
 | `chrome.debugger`, `devtools_page`, `identity`, `sidePanel`, `offscreen`, `tabCapture`, `nativeMessaging` | Desktop-only Chrome surfaces. |
 | MV3 service-worker cold starts and long sleeps | Background pages run while NovaBrowse is in memory. |
 | `chrome.action` popup chrome UI, `chrome.commands` | Rendered as NovaBrowse dialogs / address-bar shortcuts. |
 | Full CRX signature verification | CRX3 payloads can be imported, but the signature is not evaluated by a Google key chain. |
 
-The **Extensions → Discover** screen lists popular extensions with a compatibility verdict and the
-reason, and the extension detail sheet lists compatibility notes per installed package.
+**Extensions → Chrome Web Store** searches the real store, lists featured extensions with a
+compatibility verdict, and installs from a listing link or a 32-character id. The extension detail
+sheet lists compatibility notes per installed package.
 
 ### Bookmarks, downloads, history, reading list
 Bookmark editor with folders, search, HTML import/export (Netscape format). Downloads use Android's

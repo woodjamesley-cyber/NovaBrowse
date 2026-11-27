@@ -98,7 +98,7 @@ fun NovaRoot(vm: NovaViewModel, onExit: () -> Unit) {
                     NovaScreen.HISTORY -> HistoryScreen(vm)
                     NovaScreen.READING_LIST -> ReadingListScreen(vm)
                     NovaScreen.EXTENSIONS -> ExtensionsScreen(vm)
-                    NovaScreen.EXTENSION_STORE -> ExtensionsScreen(vm)
+                    NovaScreen.EXTENSION_STORE -> ExtensionStoreScreen(vm)
                     NovaScreen.ABOUT -> com.novabrowse.browser.ui.components.NovaScreen(
                         title = "About NovaBrowse",
                         onClose = { vm.closeScreen() }
@@ -114,6 +114,7 @@ fun NovaRoot(vm: NovaViewModel, onExit: () -> Unit) {
         if (vm.shortcutDraft != null) ShortcutEditorDialog(vm)
         if (vm.customEngineDraft) CustomEngineDialog(vm)
         if (vm.installUrlDialog) InstallFromUrlDialog(vm)
+        if (vm.storeLinkDialog) StoreLinkDialog(vm)
         if (vm.pendingExtension != null) ExtensionInstallDialog(vm)
         if (vm.extensionPopup != null) ExtensionPopupDialog(vm)
 

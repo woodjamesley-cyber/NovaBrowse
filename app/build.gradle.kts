@@ -18,8 +18,8 @@ android {
         applicationId = "com.novabrowse.browser"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         resourceConfigurations += listOf("en", "es", "fr", "de", "pt", "hi")

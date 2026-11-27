@@ -23,6 +23,7 @@ keystore.properties
 .DS_Store
 Thumbs.db
 *.log
+!docs/*.log
 
 # Local tooling
 setup.sh

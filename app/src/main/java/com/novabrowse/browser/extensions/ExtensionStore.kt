@@ -12,12 +12,12 @@ import java.net.URL
 import java.util.zip.ZipInputStream
 
 /**
- * Installs unpacked extension packages (.zip, or the ZIP payload of a .crx) with
- * zip-slip protection and explicit manifest validation.
+ * Installs extension packages: directly from the Chrome Web Store, from a .crx or .zip the
+ * user picked, or from a URL. Every package is unpacked with zip-slip protection and its
+ * manifest is validated before anything is written to the managed extension directory.
  *
- * NovaBrowse does not install directly from the Chrome Web Store: the store's install
- * flow requires desktop Chrome and Google's CRX signing service. Users can export a
- * package from the store page's source project or GitHub release and import it here.
+ * Chrome Web Store installs download the same signed CRX (CRX3) that desktop Chrome
+ * receives from Google's update service, so no desktop browser is involved.
  */
 class ExtensionStore(
     private val context: Context,
@@ -45,22 +45,75 @@ class ExtensionStore(
         }
     }
 
-    fun installFromUrl(url: String): Result<ExtensionRecord> = runCatching {
-        val fileName = url.substringAfterLast('/').ifBlank { "extension.zip" }
-        val temp = File(context.cacheDir, "ext_dl_${System.currentTimeMillis()}")
+    fun installFromUrl(url: String): Result<ExtensionRecord> {
+        val storeId = ChromeWebStore.resolveId(url)
+        if (storeId != null && (url.contains("chromewebstore", true) || ChromeWebStore.isExtensionId(url))) {
+            return installFromChromeWebStore(storeId)
+        }
+        return runCatching {
+            val fileName = url.substringAfterLast('/').ifBlank { "extension.zip" }
+            val temp = File(context.cacheDir, "ext_dl_${System.currentTimeMillis()}")
+            temp.mkdirs()
+            try {
+                val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 20_000
+                    readTimeout = 30_000
+                    instanceFollowRedirects = true
+                    setRequestProperty("User-Agent", ChromeWebStore.USER_AGENT)
+                }
+                connection.connect()
+                require(connection.responseCode in 200..299) { "Download failed (HTTP ${connection.responseCode})" }
+                connection.inputStream.use { input -> extractPackage(input, temp) }
+                connection.disconnect()
+                finalise(temp, fileName)
+            } finally {
+                temp.deleteRecursively()
+            }
+        }
+    }
+
+    /**
+     * Downloads an extension from the Chrome Web Store by its 32-character id and installs it.
+     * [fallbackName] (from the store listing) is used when a package's manifest stores its name
+     * behind `_locales` strings that are missing from the download.
+     */
+    fun installFromChromeWebStore(
+        extensionId: String,
+        fallbackName: String? = null
+    ): Result<ExtensionRecord> = runCatching {
+        require(ChromeWebStore.isExtensionId(extensionId)) {
+            "“$extensionId” is not a Chrome Web Store extension id"
+        }
+        val temp = File(context.cacheDir, "ext_cws_${System.currentTimeMillis()}")
         temp.mkdirs()
         try {
-            val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            val connection = (URL(ChromeWebStore.crxUrl(extensionId)).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 20_000
-                readTimeout = 30_000
+                readTimeout = 90_000
                 instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "NovaBrowse/1.0 (Android)")
+                setRequestProperty("User-Agent", ChromeWebStore.USER_AGENT)
+                setRequestProperty("Accept", "application/x-chrome-extension,*/*")
             }
             connection.connect()
-            require(connection.responseCode in 200..299) { "Download failed (HTTP ${connection.responseCode})" }
-            connection.inputStream.use { input -> extractPackage(input, temp) }
-            connection.disconnect()
-            finalise(temp, fileName)
+            val code = connection.responseCode
+            val contentType = connection.contentType.orEmpty()
+            try {
+                require(code == HttpURLConnection.HTTP_OK) {
+                    if (code == 204 || code == 404) {
+                        "The Chrome Web Store has no package for this extension (HTTP $code). " +
+                            "It may have been unpublished or removed from the store."
+                    } else {
+                        "Chrome Web Store download failed (HTTP $code)"
+                    }
+                }
+                require(!contentType.contains("text/html", true)) {
+                    "The Chrome Web Store returned a web page instead of an extension package"
+                }
+                connection.inputStream.use { input -> extractPackage(input, temp) }
+            } finally {
+                connection.disconnect()
+            }
+            finalise(temp, "Chrome Web Store", extensionId, fallbackName)
         } finally {
             temp.deleteRecursively()
         }
@@ -91,6 +144,12 @@ class ExtensionStore(
             }
             ZipInputStream(buffered).use { zip -> unzip(zip, target) }
         } else {
+            buffered.reset()
+            val signature = ByteArray(2)
+            val read = buffered.read(signature)
+            require(read == 2 && signature[0] == 'P'.code.toByte() && signature[1] == 'K'.code.toByte()) {
+                "That file is not an extension package (expected a .crx or .zip)"
+            }
             buffered.reset()
             ZipInputStream(buffered).use { zip -> unzip(zip, target) }
         }
@@ -133,9 +192,14 @@ class ExtensionStore(
         }
     }
 
-    private fun finalise(unpacked: File, source: String): ExtensionRecord {
+    private fun finalise(
+        unpacked: File,
+        source: String,
+        idOverride: String? = null,
+        fallbackName: String? = null
+    ): ExtensionRecord {
         val packageRoot = locateRoot(unpacked) ?: error("No manifest.json found in the package")
-        val parsed = ExtensionManifestParser.parse(packageRoot, source).getOrThrow()
+        val parsed = ExtensionManifestParser.parse(packageRoot, source, idOverride).getOrThrow()
         val existing = find(parsed.id)
         val dest = dirFor(parsed.id)
         if (dest.exists()) dest.deleteRecursively()
@@ -150,6 +214,7 @@ class ExtensionStore(
             } else null
         }
         val record = parsed.copy(
+            name = if (parsed.name.startsWith("__MSG_")) fallbackName ?: parsed.name else parsed.name,
             iconPath = iconRelative?.let { File(dest, it).absolutePath },
             enabled = existing?.enabled ?: true,
             installedAt = existing?.installedAt ?: System.currentTimeMillis(),
@@ -192,6 +257,37 @@ class ExtensionStore(
 
     fun readText(id: String, relative: String): String? =
         runCatching { File(dirFor(id), relative).takeIf { it.exists() }?.readText() }.getOrNull()
+
+    /** Resolves an extension-relative resource without escaping the extension directory. */
+    fun resourceFile(id: String, relative: String): File? = runCatching {
+        val root = dirFor(id).canonicalFile
+        if (!root.exists()) return null
+        val file = File(root, relative.replace('/', File.separatorChar)).canonicalFile
+        if (!file.canonicalPath.startsWith(root.path + File.separator)) null
+        else file.takeIf { it.isFile }
+    }.getOrNull()
+
+    /** MIME type for extension resources served to background pages and popups. */
+    fun mimeType(relative: String): String = when (relative.substringAfterLast('.', "").lowercase()) {
+        "html", "htm" -> "text/html"
+        "js", "mjs" -> "application/javascript"
+        "css" -> "text/css"
+        "json", "map" -> "application/json"
+        "svg" -> "image/svg+xml"
+        "png" -> "image/png"
+        "jpg", "jpeg" -> "image/jpeg"
+        "gif" -> "image/gif"
+        "webp" -> "image/webp"
+        "ico" -> "image/x-icon"
+        "woff" -> "font/woff"
+        "woff2" -> "font/woff2"
+        "ttf" -> "font/ttf"
+        "wasm" -> "application/wasm"
+        "mp3" -> "audio/mpeg"
+        "mp4" -> "video/mp4"
+        "txt" -> "text/plain"
+        else -> "application/octet-stream"
+    }
 
     fun readManifest(id: String): JSONObject? =
         runCatching { JSONObject(File(dirFor(id), "manifest.json").readText()) }.getOrNull()

@@ -50,6 +50,7 @@ data class ExtensionRecord(
     val contentScripts: List<ContentScript> = emptyList(),
     val backgroundScripts: List<String> = emptyList(),
     val backgroundServiceWorker: String? = null,
+    val backgroundModule: Boolean = false,
     val enabled: Boolean = true,
     val installedAt: Long = System.currentTimeMillis(),
     val hasPopup: Boolean = false,
@@ -75,6 +76,7 @@ data class ExtensionRecord(
         put("contentScripts", JSONArray().apply { contentScripts.forEach { put(it.toJson()) } })
         put("backgroundScripts", JSONArray(backgroundScripts))
         put("backgroundServiceWorker", backgroundServiceWorker ?: JSONObject.NULL)
+        put("backgroundModule", backgroundModule)
         put("enabled", enabled); put("installedAt", installedAt)
         put("hasPopup", hasPopup); put("popupPath", popupPath ?: JSONObject.NULL)
         put("actionTitle", actionTitle)
@@ -101,6 +103,7 @@ data class ExtensionRecord(
             backgroundScripts = o.optJSONArray("backgroundScripts").toStringList(),
             backgroundServiceWorker = if (o.isNull("backgroundServiceWorker")) null
                 else o.optString("backgroundServiceWorker"),
+            backgroundModule = o.optBoolean("backgroundModule", false),
             enabled = o.optBoolean("enabled", true),
             installedAt = o.optLong("installedAt", System.currentTimeMillis()),
             hasPopup = o.optBoolean("hasPopup", false),
@@ -126,13 +129,20 @@ internal fun JSONArray?.toStringList(): List<String> {
 
 object ExtensionManifestParser {
 
-    fun parse(dir: File, source: String): Result<ExtensionRecord> = runCatching {
+    /**
+     * [idOverride] keeps the Chrome Web Store's own 32-character id for store installs so
+     * `chrome.runtime.id` and extension URLs match Chrome. Locally imported packages get a
+     * stable digest id instead.
+     */
+    fun parse(dir: File, source: String, idOverride: String? = null): Result<ExtensionRecord> = runCatching {
         val manifestFile = File(dir, "manifest.json")
         require(manifestFile.exists()) { "manifest.json is missing from the package" }
         val manifest = JSONObject(manifestFile.readText())
-        val name = manifest.optString("name").ifBlank { "Unnamed extension" }
+        val messages = readLocaleMessages(dir, manifest.optString("default_locale"))
+        fun localize(value: String): String = resolveMessages(value, messages)
+        val name = localize(manifest.optString("name")).ifBlank { "Unnamed extension" }
         val version = manifest.optString("version", "0")
-        val description = manifest.optString("description", "")
+        val description = localize(manifest.optString("description", ""))
         val mv = manifest.optInt("manifest_version", 2)
         require(mv == 2 || mv == 3) { "Unsupported manifest_version $mv (only 2 and 3 are supported)" }
 
@@ -164,10 +174,11 @@ object ExtensionManifestParser {
         val backgroundScripts = background?.optJSONArray("scripts").toStringList()
         val serviceWorker = background?.optString("service_worker")?.takeIf { it.isNotBlank() }
             ?: background?.optString("page")?.takeIf { it.isNotBlank() }
+        val backgroundModule = background?.optString("type") == "module"
 
         val action = manifest.optJSONObject("action") ?: manifest.optJSONObject("browser_action")
         val popupPath = action?.optString("default_popup")?.takeIf { it.isNotBlank() }
-        val actionTitle = action?.optString("default_title")?.takeIf { it.isNotBlank() } ?: name
+        val actionTitle = localize(action?.optString("default_title").orEmpty()).ifBlank { name }
 
         val icons = manifest.optJSONObject("icons")
         val iconCandidate = if (icons != null && icons.length() > 0) {
@@ -187,7 +198,7 @@ object ExtensionManifestParser {
             .joinToString("") { "%02x".format(it) }
 
         ExtensionRecord(
-            id = digest.take(16),
+            id = idOverride ?: digest.take(16),
             name = name,
             version = version,
             description = description,
@@ -198,6 +209,7 @@ object ExtensionManifestParser {
             contentScripts = contentScripts,
             backgroundScripts = backgroundScripts,
             backgroundServiceWorker = serviceWorker,
+            backgroundModule = backgroundModule,
             hasPopup = popupPath != null,
             popupPath = popupPath,
             actionTitle = actionTitle,
@@ -206,6 +218,51 @@ object ExtensionManifestParser {
             unsupported = unsupported,
             manifestJson = manifest.toString(2)
         )
+    }
+
+    private val MESSAGE_REFERENCE = Regex("__MSG_([A-Za-z0-9_@]+)__")
+
+    /** Chrome ships `_locales/<locale>/messages.json`; some stores use a flat map instead. */
+    private fun readLocaleMessages(dir: File, defaultLocale: String): Map<String, String> {
+        val locales = File(dir, "_locales")
+        if (!locales.isDirectory) return emptyMap()
+        val available = locales.listFiles()
+            ?.filter { it.isDirectory }
+            ?.map { it.name }
+            ?.sorted()
+            .orEmpty()
+        if (available.isEmpty()) return emptyMap()
+        val preferred = buildList {
+            if (defaultLocale.isNotBlank()) add(defaultLocale)
+            add("en")
+            add("en_US")
+            add("en_GB")
+        }
+        val chosen = preferred.firstOrNull { available.contains(it) } ?: available.first()
+        val file = File(File(locales, chosen), "messages.json")
+        if (!file.exists()) return emptyMap()
+        return runCatching {
+            val root = JSONObject(file.readText())
+            val messages = root.optJSONObject("messages") ?: root
+            val out = HashMap<String, String>(messages.length())
+            val keys = messages.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                when (val value = messages.opt(key)) {
+                    is JSONObject -> value.optString("message").takeIf { it.isNotBlank() }
+                        ?.let { out[key] = it }
+                    is String -> out[key] = value
+                }
+            }
+            out
+        }.getOrDefault(emptyMap())
+    }
+
+    private fun resolveMessages(value: String, messages: Map<String, String>): String {
+        if (messages.isEmpty() || !value.contains("__MSG_")) return value
+        return MESSAGE_REFERENCE.replace(value) { match ->
+            messages[match.groupValues[1]] ?: match.value
+        }
     }
 }
 

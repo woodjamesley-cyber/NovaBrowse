@@ -136,20 +136,20 @@ class ExtensionManager(
         tabId: String
     ) {
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return
-        val bootstrap = ExtensionShim.bootstrap(ext.id, ext.name)
+        val bootstrap = ExtensionShim.bootstrap(ext.id, ext.name, ext.manifestJson)
         val startScripts = ext.contentScripts.filter { it.runAt == "document_start" }
         val combined = StringBuilder(bootstrap)
         startScripts.forEach { cs ->
             cs.css.forEach { cssFile ->
                 val css = store.readText(ext.id, cssFile) ?: return@forEach
                 combined.append("\n").append(
-                    ExtensionShim.contentScript(injectCss(css), cs.matches, cs.excludeMatches)
+                    ExtensionShim.contentScript(injectCss(css), cs.matches, cs.excludeMatches, ext.id)
                 )
             }
             cs.js.forEach { jsFile ->
                 val js = store.readText(ext.id, jsFile) ?: return@forEach
                 combined.append("\n").append(
-                    ExtensionShim.contentScript(js, cs.matches, cs.excludeMatches)
+                    ExtensionShim.contentScript(js, cs.matches, cs.excludeMatches, ext.id)
                 )
             }
         }
@@ -192,14 +192,18 @@ class ExtensionManager(
                 cs.css.forEach { cssFile ->
                     store.readText(ext.id, cssFile)?.let {
                         webView.evaluateJavascript(
-                            ExtensionShim.contentScript(injectCss(it), cs.matches, cs.excludeMatches), null
+                            ExtensionShim.contentScript(
+                                injectCss(it), cs.matches, cs.excludeMatches, ext.id
+                            ), null
                         )
                     }
                 }
                 cs.js.forEach { jsFile ->
                     store.readText(ext.id, jsFile)?.let {
                         webView.evaluateJavascript(
-                            ExtensionShim.contentScript(it, cs.matches, cs.excludeMatches), null
+                            ExtensionShim.contentScript(
+                                it, cs.matches, cs.excludeMatches, ext.id
+                            ), null
                         )
                     }
                 }
@@ -272,20 +276,45 @@ class ExtensionManager(
         attachMessageChannel(webView, "background:${ext.id}")
         val html = """
             <!doctype html><html><head><meta charset="utf-8">
-            <script>${ExtensionShim.bootstrap(ext.id, ext.name)}</script>
+            <script>${ExtensionShim.bootstrap(ext.id, ext.name, ext.manifestJson)}</script>
             </head><body></body></html>
         """.trimIndent()
         webView.webViewClient = object : android.webkit.WebViewClient() {
+            override fun shouldInterceptRequest(
+                view: WebView,
+                request: android.webkit.WebResourceRequest
+            ): android.webkit.WebResourceResponse? = serveResource(ext, request.url)
+
             override fun onPageFinished(view: WebView, url: String?) {
-                val files = buildList {
-                    if (ext.backgroundServiceWorker != null) add(ext.backgroundServiceWorker)
-                    addAll(ext.backgroundScripts)
-                }
-                files.forEach { file ->
-                    store.readText(ext.id, file)?.let { script ->
-                        view.evaluateJavascript(script, null)
+                val worker = ext.backgroundServiceWorker
+                if (worker != null && ext.backgroundModule) {
+                    // MV3 module service workers use import/export, so they are loaded as a
+                    // module from the extension's own origin rather than evaluated as a script.
+                    val source = JSONObject.quote(extensionUrl(ext, worker))
+                    view.evaluateJavascript(
+                        "try{var s=document.createElement('script');s.type='module';s.src=$source;" +
+                            "(document.head||document.documentElement).appendChild(s);}" +
+                            "catch(e){console.error('NovaBrowse extension',e);}",
+                        null
+                    )
+                } else {
+                    val files = buildList {
+                        if (worker != null) add(worker)
+                        addAll(ext.backgroundScripts)
+                    }
+                    files.forEach { file ->
+                        store.readText(ext.id, file)?.let { script ->
+                            view.evaluateJavascript(script, null)
+                        }
                     }
                 }
+                // Extensions commonly do their setup in onInstalled; fire it and onStartup so
+                // background logic that depends on them actually runs.
+                val installed = JSONObject().put("reason", "install").put("temporary", false)
+                view.evaluateJavascript(
+                    ExtensionShim.eventDispatch("installed", installed.toString()), null
+                )
+                view.evaluateJavascript(ExtensionShim.eventDispatch("startup", "{}"), null)
             }
         }
         webView.loadDataWithBaseURL(BACKGROUND_ORIGIN, html, "text/html", "utf-8", null)
@@ -340,7 +369,7 @@ class ExtensionManager(
     fun popupDocument(ext: ExtensionRecord): String? {
         val path = ext.popupPath ?: return null
         val body = store.popupHtml(ext.id, path) ?: return null
-        val shim = "<script>${ExtensionShim.bootstrap(ext.id, ext.name)}</script>"
+        val shim = "<script>${ExtensionShim.bootstrap(ext.id, ext.name, ext.manifestJson)}</script>"
         val headMatch = Regex("<head[^>]*>", RegexOption.IGNORE_CASE).find(body)
         return if (headMatch != null) {
             val insertAt = headMatch.range.last + 1
@@ -352,6 +381,54 @@ class ExtensionManager(
 
     fun attachPopup(webView: WebView, ext: ExtensionRecord) {
         attachMessageChannel(webView, "popup:${ext.id}")
+        webView.webViewClient = object : android.webkit.WebViewClient() {
+            override fun shouldInterceptRequest(
+                view: WebView,
+                request: android.webkit.WebResourceRequest
+            ): android.webkit.WebResourceResponse? = serveResource(ext, request.url)
+        }
+    }
+
+    // ---------------------------------------------------------------- extension origin
+
+    private fun extensionUrl(ext: ExtensionRecord, path: String): String =
+        "$BACKGROUND_ORIGIN${ext.id}/${path.trimStart('/')}"
+
+    /**
+     * Serves files from the extension's directory at its own fake https origin, which is what
+     * `chrome.runtime.getURL`, module imports and popup stylesheets/images resolve against.
+     */
+    private fun serveResource(
+        ext: ExtensionRecord,
+        uri: Uri
+    ): android.webkit.WebResourceResponse? {
+        if (uri.host != BACKGROUND_HOST) return null
+        val segments = uri.pathSegments
+        if (segments.isEmpty()) return null
+        // chrome.runtime.getURL uses /<id>/path; relative URLs resolve against the origin root,
+        // so both forms are served from the extension's directory.
+        val relative = if (segments.first() == ext.id && segments.size > 1) {
+            segments.drop(1).joinToString("/")
+        } else {
+            segments.joinToString("/")
+        }
+        val file = store.resourceFile(ext.id, relative)
+            ?: return android.webkit.WebResourceResponse(
+                "text/plain", "utf-8", 404, "Not Found",
+                mapOf("Access-Control-Allow-Origin" to "*"),
+                java.io.ByteArrayInputStream(ByteArray(0))
+            )
+        val mime = store.mimeType(relative)
+        val textual = mime.startsWith("text/") || mime == "application/javascript" ||
+            mime == "application/json" || mime == "image/svg+xml"
+        return android.webkit.WebResourceResponse(
+            mime, if (textual) "utf-8" else null, 200, "OK",
+            mapOf(
+                "Access-Control-Allow-Origin" to "*",
+                "Cache-Control" to "no-store"
+            ),
+            file.inputStream()
+        )
     }
 
     // ---------------------------------------------------------------- popups / menus
@@ -672,5 +749,6 @@ class ExtensionManager(
         const val KEY_CHANNEL = "nova_ext_channel"
         const val CHANNEL_ID = "nova_extensions"
         const val BACKGROUND_ORIGIN = "https://extensions.novabrowse.local/"
+        const val BACKGROUND_HOST = "extensions.novabrowse.local"
     }
 }
