@@ -102,6 +102,8 @@ class TabManager(
         NovaFlags.safeBrowsing = s.safeBrowsing
         NovaFlags.desktopMode = s.desktopMode
         NovaFlags.globalDnt = s.doNotTrack
+        // Let the system autofill service (Google Password Manager, Bitwarden, ...) fill logins.
+        runCatching { webView.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_YES }
         CookieManager.getInstance().setAcceptCookie(s.cookiesEnabled)
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, s.thirdPartyCookies)
     }

@@ -13,7 +13,7 @@ data class AppSettings(
     val glassIntensity: Float = 1.0f,
     val glassHighlights: Boolean = false,
     val toolbarBottom: Boolean = false,
-    val searchEngineId: String = "google",
+    val searchEngineId: String = "brave",
     val customEngines: List<SearchEngine> = emptyList(),
     val wallpaper: String = "plain",         // "plain", preset id or file:/// path
     val wallpaperDim: Float = 0.35f,
@@ -62,7 +62,13 @@ class SettingsStore(context: Context) {
                 glassIntensity = o.optDouble("glassIntensity", d.glassIntensity.toDouble()).toFloat(),
                 glassHighlights = o.optBoolean("glassHighlights", d.glassHighlights),
                 toolbarBottom = o.optBoolean("toolbarBottom", d.toolbarBottom),
-                searchEngineId = o.optString("searchEngineId", d.searchEngineId),
+                // 1.4.0 moved the default to Brave Search; profiles that never picked an engine
+                // still carry the old "google" value, so switch them over once.
+                searchEngineId = if (o.optBoolean("engineMigrated", false)) {
+                    o.optString("searchEngineId", d.searchEngineId)
+                } else {
+                    d.searchEngineId
+                },
                 customEngines = o.optJSONArray("customEngines")?.let { arr ->
                     (0 until arr.length()).mapNotNull { i ->
                         arr.optJSONObject(i)?.let { SearchEngine.fromJson(it) }
@@ -129,6 +135,7 @@ class SettingsStore(context: Context) {
         put("showShortcuts", s.showShortcuts); put("showBookmarks", s.showBookmarks)
         put("showRecent", s.showRecent); put("showRecentlyClosed", s.showRecentlyClosed)
         put("shortcutColumns", s.shortcutColumns)
+        put("engineMigrated", true)
         put("javaScriptEnabled", s.javaScriptEnabled); put("desktopMode", s.desktopMode)
         put("textZoom", s.textZoom)
         put("cookiesEnabled", s.cookiesEnabled); put("thirdPartyCookies", s.thirdPartyCookies)

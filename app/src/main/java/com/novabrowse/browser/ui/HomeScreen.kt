@@ -171,7 +171,11 @@ fun HomeScreen(vm: NovaViewModel, modifier: Modifier = Modifier) {
                         ChromeCard {
                             ShortcutGrid(
                                 shortcuts = shortcuts.sortedBy { it.order },
-                                columns = settings.shortcutColumns,
+                                columns = if (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600) {
+                                    maxOf(5, settings.shortcutColumns)
+                                } else {
+                                    settings.shortcutColumns
+                                },
                                 onOpen = { vm.navigate(it.url) },
                                 onLongPress = { actionShortcut = it },
                                 onAdd = { vm.openShortcutDraft(null) }

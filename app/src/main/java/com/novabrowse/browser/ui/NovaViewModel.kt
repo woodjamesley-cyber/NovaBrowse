@@ -118,6 +118,8 @@ class NovaViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var googleSignedIn by mutableStateOf(false)
         private set
+    var toolbarHidden by mutableStateOf(false)
+        private set
     var findVisible by mutableStateOf(false)
         private set
     var findQuery by mutableStateOf("")
@@ -935,6 +937,22 @@ class NovaViewModel(app: Application) : AndroidViewModel(app) {
             storeHomeLoading = false
             if (sections.isNotEmpty()) storeSections = sections
         }
+    }
+
+    // ------------------------------------------------------------- toolbar hiding
+
+    /**
+     * Chrome-style auto-hide: scrolling down the page pulls the toolbar away, scrolling up
+     * brings it back. Small deltas are ignored so the bar does not flicker while a page settles.
+     */
+    fun onPageScrolled(dy: Int) {
+        if (activeTab?.isStartPage != false) return
+        if (dy > 14 && !toolbarHidden) toolbarHidden = true
+        else if (dy < -14 && toolbarHidden) toolbarHidden = false
+    }
+
+    fun showToolbar() {
+        if (toolbarHidden) toolbarHidden = false
     }
 
     // ------------------------------------------------------------------ account

@@ -12,6 +12,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -89,12 +94,20 @@ fun BrowserScreen(vm: NovaViewModel) {
     val showChrome = tab?.fullscreenView == null
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        if (showChrome && !settings.toolbarBottom) {
+        AnimatedVisibility(
+            visible = showChrome && !settings.toolbarBottom && !vm.toolbarHidden,
+            enter = slideInVertically { -it } + fadeIn(),
+            exit = slideOutVertically { -it } + fadeOut()
+        ) {
             ChromeHeader(vm)
         }
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            WebViewHost(tab, visible = tab != null && !tab.isStartPage)
+            WebViewHost(
+                tab,
+                visible = tab != null && !tab.isStartPage,
+                onScroll = vm::onPageScrolled
+            )
             if (tab == null || tab.isStartPage) {
                 HomeScreen(vm)
             }
@@ -124,7 +137,11 @@ fun BrowserScreen(vm: NovaViewModel) {
             }
         }
 
-        if (showChrome && settings.toolbarBottom) {
+        AnimatedVisibility(
+            visible = showChrome && settings.toolbarBottom && !vm.toolbarHidden,
+            enter = slideInVertically { it } + fadeIn(),
+            exit = slideOutVertically { it } + fadeOut()
+        ) {
             ChromeToolbar(vm, bottom = true)
         }
     }
@@ -362,7 +379,7 @@ private fun AddressPill(vm: NovaViewModel, tab: BrowserTab?, modifier: Modifier 
 }
 
 @Composable
-private fun WebViewHost(tab: BrowserTab?, visible: Boolean) {
+private fun WebViewHost(tab: BrowserTab?, visible: Boolean, onScroll: (Int) -> Unit) {
     val background = MaterialTheme.colorScheme.background
     AndroidView(
         modifier = Modifier.fillMaxSize(),
@@ -383,6 +400,10 @@ private fun WebViewHost(tab: BrowserTab?, visible: Boolean) {
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
                 )
+            }
+            webView.setOnScrollChangeListener { _, _, y, _, oldY ->
+                val dy = y - oldY
+                if (dy != 0) onScroll(dy)
             }
             tab.fullscreenView?.let { fullscreen ->
                 if (fullscreen.parent == null) {

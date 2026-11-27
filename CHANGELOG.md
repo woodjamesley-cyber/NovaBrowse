@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.4.0 — Auto-hiding toolbar, Brave Search, autofill
+
+- **Toolbar hides while you scroll**: scrolling down a page slides the tab strip and toolbar away,
+  scrolling back up brings them back (top and bottom toolbar layouts both). The start page keeps
+  its toolbar visible.
+- **Brave Search is the default engine** for new profiles, and profiles that still carried the old
+  untouched default are moved over once. Any engine can still be picked in Settings → General.
+- **Password autofill**: the browsing WebView is now exposed to the system autofill service, so
+  Google Password Manager, Bitwarden and other autofill apps can fill logins and save them.
+- **Large-screen home grid**: on tablets the shortcut grid uses at least 5 columns (as many as the
+  3–6 column setting asks for otherwise), matching the Samsung-style home layout.
+- Version bumped to 1.4.0 (versionCode 5).
+
 ## 1.3.0 — Samsung-style home, bigger store, account
 
 - **One search field on the home page**: the toolbar no longer draws a second omnibox while the
