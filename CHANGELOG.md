@@ -12,7 +12,7 @@
   Signing in uses Google's own sign-in page in a tab and keeps the session in the browser; the
   screen detects an active Google session and can sign out by clearing Google's cookies. There is
   no cloud sync — bookmarks, history and settings stay on the device, and the screen says so.
-- Version bumped to 1.3.0 (versionCode 4).
+- Version bumped to 1.3.0 (versionCode 4) and published as the `continuous` release build.
 
 ## 1.2.0 — Chrome Web Store
 
